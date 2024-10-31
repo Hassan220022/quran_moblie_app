@@ -71,7 +71,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                         ),
                       ),
                     ),
-                    title: Text('${bookmark.surahName}'),
+                    title: Text(bookmark.surahName),
                     subtitle: Text(
                       bookmark.text,
                       textAlign: TextAlign.right,

@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'utils/provider/preference_settings_provider.dart';
-import 'screens/bookmark.dart';
-import 'screens/quran_reader.dart';
-import 'screens/search.dart';
-import 'screens/surah_list.dart';
 import 'screens/main_screen.dart';
-import 'utils/route_observer/route_observer.dart'; // Added import
+// Added import
 import 'utils/provider/bookmarks_provider.dart'; // Import BookmarksProvider
 
 void main() {

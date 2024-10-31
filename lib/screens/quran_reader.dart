@@ -40,7 +40,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   }
 
   Future<void> fetchAyahs() async {
-    final String apiUrl = 'http://api.alquran.cloud/v1/quran/quran-uthmani';
+    const String apiUrl = 'http://api.alquran.cloud/v1/quran/quran-uthmani';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));

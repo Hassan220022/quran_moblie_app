@@ -18,10 +18,10 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    SurahListScreen(),
+    const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    QuranReaderScreen(), // Updated to remove surahNumber parameter
+    const QuranReaderScreen(), // Updated to remove surahNumber parameter
   ];
 
   @override
@@ -83,7 +83,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
               isDarkTheme ? Icons.light_mode : Icons.dark_mode,
               color: isDarkTheme
                   ? Colors.white
-                  : Color(0xFF5E329D), // Corrected color
+                  : const Color(0xFF5E329D), // Corrected color
             ),
             onPressed: () {
               Provider.of<PreferenceSettingsProvider>(context, listen: false)
@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color(0xff682DBD),
         unselectedItemColor: Colors.grey,
-        backgroundColor: isDarkTheme ? const Color(0x091945) : Colors.white,
+        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [

@@ -8,13 +8,16 @@ import 'package:provider/provider.dart';
 class Surah {
   final int number;
   final String name;
+  final String revelationType;
 
-  Surah({required this.number, required this.name});
+  Surah(
+      {required this.number, required this.name, required this.revelationType});
 
   factory Surah.fromJson(Map<String, dynamic> json) {
     return Surah(
       number: json['number'],
       name: json['name'],
+      revelationType: json['revelationType'],
     );
   }
 }
@@ -38,7 +41,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
   }
 
   Future<void> fetchSurahs() async {
-    final String apiUrl = 'http://api.alquran.cloud/v1/quran/quran-uthmani';
+    const String apiUrl = 'http://api.alquran.cloud/v1/quran/quran-uthmani';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -73,6 +76,20 @@ class _SurahListScreenState extends State<SurahListScreen> {
     }
   }
 
+  Widget _buildRevelationIcon(String type) {
+    String assetPath = '';
+    if (type.toLowerCase() == 'meccan') {
+      assetPath = 'assets/icon/kaaba.png';
+    } else if (type.toLowerCase() == 'medinan') {
+      assetPath = 'assets/icon/dome.png';
+    }
+    return Image.asset(
+      assetPath,
+      width: 24,
+      height: 24,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isDarkTheme =
@@ -102,7 +119,13 @@ class _SurahListScreenState extends State<SurahListScreen> {
                   itemBuilder: (context, index) {
                     final surah = _surahs[index];
                     return ListTile(
-                      title: Text('${surah.number}. ${surah.name}'),
+                      title: Row(
+                        children: [
+                          Text('${surah.number}. ${surah.name}'),
+                          const SizedBox(width: 10), // Add some spacing
+                          _buildRevelationIcon(surah.revelationType),
+                        ],
+                      ),
                       trailing: const Icon(Icons.arrow_forward),
                       onTap: () {
                         Navigator.push(
