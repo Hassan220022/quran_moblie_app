@@ -145,8 +145,6 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
     EdgeInsets safePadding = MediaQuery.of(context).padding;
     double horizontalPadding = 16.0;
-    double additionalLeftPadding = isLandscape ? safePadding.left : 0.0;
-    double additionalRightPadding = isLandscape ? safePadding.right : 0.0;
 
     return Scaffold(
       appBar: AppBar(

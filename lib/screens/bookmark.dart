@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/provider/bookmarks_provider.dart';
-import '../models/bookmark.dart';
 import '../utils/provider/preference_settings_provider.dart';
 import 'surah_reader.dart'; // Import SurahReaderScreen
 
