@@ -149,7 +149,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${widget.surahName}',
+          widget.surahName,
           style: TextStyle(
             color: isDarkTheme ? Colors.white : const Color(0xff682DBD),
           ),
@@ -193,7 +193,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                         padding: const EdgeInsets.all(16.0),
                         child: ColorFiltered(
                           colorFilter: isDarkTheme
-                              ? ColorFilter.mode(
+                              ? const ColorFilter.mode(
                                   Colors.transparent, BlendMode.multiply)
                               : const ColorFilter.matrix([
                                   -1,
