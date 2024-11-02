@@ -5,7 +5,8 @@ import 'bookmark.dart';
 import 'quran_reader.dart';
 import 'search.dart';
 import 'surah_list.dart';
-import '../utils/route_observer/route_observer.dart'; // Updated import
+import '../utils/route_observer/route_observer.dart';
+import 'prayer.dart'; // Ensure this import points to your PrayerTimesWidget file
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,17 +18,18 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with RouteAware {
   int _selectedIndex = 0;
 
+  // List of screens for navigation
   final List<Widget> _screens = [
     const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    const QuranReaderScreen(), // Updated to remove surahNumber parameter
+    const QuranReaderScreen(),
+    PrayerTimesWidget(), // Your prayer times widget
   ];
 
   @override
   void initState() {
     super.initState();
-    // Initialize any necessary data or subscriptions here
   }
 
   @override
@@ -45,6 +47,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     super.dispose();
   }
 
+  // Handle bottom navigation item tap
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -92,7 +95,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ),
         ],
       ),
-      body: _screens[_selectedIndex],
+      body: _screens[_selectedIndex], // Displays the selected screen
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color(0xff682DBD),
         unselectedItemColor: Colors.grey,
@@ -112,10 +115,15 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
             icon: Icon(Icons.search),
             label: 'Search',
           ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.book),
-          //   label: 'Quran',
-          // ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: 'Reader',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+                Icons.access_time), // Changed icon to represent prayer times
+            label: 'Prayers',
+          ),
         ],
       ),
     );

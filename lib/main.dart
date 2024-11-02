@@ -26,6 +26,7 @@ class MyApp extends StatelessWidget {
     return Consumer<PreferenceSettingsProvider>(
       builder: (context, prefSetProvider, _) {
         return MaterialApp(
+          debugShowCheckedModeBanner: false,
           title: 'Quran App',
           theme: ThemeData(
             primaryColor: const Color(0xFF091945),
