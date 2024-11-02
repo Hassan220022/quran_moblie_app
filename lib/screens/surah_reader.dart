@@ -293,31 +293,40 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                                   ),
                                 ),
                               ),
-                              IconButton(
-                                icon: Icon(
-                                  isPlaying ? Icons.stop : Icons.play_arrow,
-                                  color: isDarkTheme
-                                      ? Colors.white
-                                      : const Color(0xff682DBD),
-                                ),
-                                onPressed: () {
-                                  if (isPlaying) {
-                                    _stopAudio();
-                                  } else {
-                                    _playAudio(ayah.numberInSurah);
-                                  }
-                                },
-                              ),
+                              // IconButton(
+                              //   icon: Icon(
+                              //     isPlaying ? Icons.stop : Icons.play_arrow,
+                              //     color: isDarkTheme
+                              //         ? Colors.white
+                              //         : const Color(0xff682DBD),
+                              //   ),
+                              //   onPressed: () {
+                              //     if (isPlaying) {
+                              //       _stopAudio();
+                              //     } else {
+                              //       _playAudio(ayah.numberInSurah);
+                              //     }
+                              //   },
+                              // ),
                               const SizedBox(width: 12.0),
                               // Ayah Text
                               Expanded(
-                                child: Text(
-                                  ayah.text,
-                                  style: const TextStyle(
-                                    fontFamily: 'Quran',
-                                    fontSize: 20.0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (isPlaying) {
+                                      _stopAudio();
+                                    } else {
+                                      _playAudio(ayah.numberInSurah);
+                                    }
+                                  },
+                                  child: Text(
+                                    ayah.text,
+                                    style: const TextStyle(
+                                      fontFamily: 'Quran',
+                                      fontSize: 20.0,
+                                    ),
+                                    textDirection: TextDirection.rtl,
                                   ),
-                                  textDirection: TextDirection.rtl,
                                 ),
                               ),
                             ],
