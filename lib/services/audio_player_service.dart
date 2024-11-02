@@ -12,12 +12,6 @@ class AudioPlayerService with ChangeNotifier {
       notifyListeners();
     });
 
-    // _audioPlayer.onPlayerError.listen((msg) {
-    //   _isPlaying = false;
-    //   notifyListeners();
-    //   // Optionally handle the error here
-    // });
-
     _audioPlayer.onPlayerStateChanged.listen((PlayerState state) {
       _isPlaying = state == PlayerState.playing;
       notifyListeners();
@@ -44,6 +38,7 @@ class AudioPlayerService with ChangeNotifier {
 
   bool get isPlaying => _isPlaying;
 
+  @override
   void dispose() {
     _audioPlayer.dispose();
     super.dispose();
