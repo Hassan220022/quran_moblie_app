@@ -5,19 +5,6 @@ import 'screens/main_screen.dart';
 // Added import
 import 'utils/provider/bookmarks_provider.dart'; // Import BookmarksProvider
 
-void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => PreferenceSettingsProvider()),
-        ChangeNotifierProvider(
-            create: (_) => BookmarksProvider()), // Register BookmarksProvider
-      ],
-      child: const MyApp(),
-    ),
-  );
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
