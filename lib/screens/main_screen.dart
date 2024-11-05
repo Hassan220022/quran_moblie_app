@@ -66,7 +66,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         elevation: 0,
         title: Text(
           _titles[_selectedIndex],
