@@ -66,7 +66,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         elevation: 0,
         title: Text(
           _titles[_selectedIndex],
@@ -74,6 +74,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
             color: isDarkTheme ? Colors.white : const Color(0xff682DBD),
           ),
         ),
+        // automaticallyImplyLeading: false,
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
           child: Image.asset(
@@ -100,7 +101,8 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color(0xff682DBD),
         unselectedItemColor: Colors.grey,
-        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
+        backgroundColor: isDarkTheme ? const Color(0x091945) : Colors.white,
+        elevation: 0,
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
