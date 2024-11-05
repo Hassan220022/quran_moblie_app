@@ -76,7 +76,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Search Surahs By English Name or Number',
+          'Search By English Name or Number',
           style: TextStyle(
             fontSize: 19,
             fontWeight: FontWeight.bold,

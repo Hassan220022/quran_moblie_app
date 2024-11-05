@@ -3,12 +3,20 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../utils/provider/preference_settings_provider.dart';
 
 class PrayerTimeService {
-  Future<Map<String, dynamic>> getPrayerTimes(
-      String latitude, String longitude) async {
+  Future<Map<String, dynamic>> getPrayerTimes(String latitude, String longitude,
+      {DateTime? date}) async {
+    String dateString = '';
+    if (date != null) {
+      dateString =
+          '&date=${date.day}-${date.month}-${date.year}'; // Format as DD-MM-YYYY
+    }
+
     final url =
-        'https://api.aladhan.com/v1/timings?latitude=$latitude&longitude=$longitude';
+        'https://api.aladhan.com/v1/timings?latitude=$latitude&longitude=$longitude$dateString';
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
@@ -44,6 +52,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
     bool serviceEnabled;
     LocationPermission permission;
 
+    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() {
@@ -52,6 +61,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
       return;
     }
 
+    // Check for location permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -71,6 +81,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
       return;
     }
 
+    // Get current position
     _currentPosition = await Geolocator.getCurrentPosition();
     _fetchPrayerTimes();
   }
@@ -84,76 +95,143 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
         _currentPosition!.longitude.toString(),
       );
 
-      // Format and store the prayer times
-      DateFormat formatter = DateFormat("HH:mm");
+      // Format the prayer times
+      DateFormat inputFormat = DateFormat("HH:mm");
+      DateFormat outputFormat = DateFormat("h:mm a");
       timings.forEach((key, value) {
         try {
-          DateTime time = formatter.parse(value);
-          String formattedTime = DateFormat("h:mm a").format(time);
+          DateTime time = inputFormat.parse(value);
+          String formattedTime = outputFormat.format(time);
           timings[key] = formattedTime;
         } catch (e) {
-          print("Error parsing time for $key: $e");
-          timings[key] =
-              "Invalid Time"; // or keep original value, based on your needs
+          timings[key] = "Invalid Time";
         }
       });
 
-      // Determine the next prayer time
-      DateTime now = DateTime.now();
-      DateFormat nextPrayerFormatter = DateFormat("h:mm a");
-      DateTime? nextPrayerTime;
-      String? nextPrayer;
+      // Get next prayer time
+      await _getNextPrayerTime(timings);
 
-      timings.forEach((key, value) {
-        try {
-          DateTime prayerTime = nextPrayerFormatter.parse(value);
-          if (now.isBefore(prayerTime) &&
-              (nextPrayerTime == null ||
-                  prayerTime.isBefore(nextPrayerTime!))) {
-            nextPrayerTime = prayerTime;
-            nextPrayer = key;
-          }
-        } catch (e) {
-          print("Error parsing prayer time for $key: $e");
-        }
-      });
-
-      // Calculate time left until next prayer
-      if (nextPrayerTime != null) {
-        _timeLeft = nextPrayerTime?.difference(now);
+      if (mounted) {
+        setState(() {
+          _prayerTimes = timings;
+          _isLoading = false;
+        });
       }
-
-      // Update the state
-      setState(() {
-        _prayerTimes = timings;
-        _nextPrayer = nextPrayer;
-        _nextPrayerTime = nextPrayerTime != null
-            ? nextPrayerFormatter.format(nextPrayerTime!)
-            : "Not available";
-        _isLoading = false;
-      });
     } catch (e) {
       print("An error occurred: $e");
-      setState(() {
-        _isLoading = false;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _getNextPrayerTime(Map<String, dynamic> timings) async {
+    DateTime now = DateTime.now();
+    DateFormat formatter = DateFormat("h:mm a");
+    DateTime? nextPrayerTime;
+    String? nextPrayer;
+
+    // Iterate over today's prayers to find the next prayer
+    for (var entry in timings.entries) {
+      if ([
+        "Fajr",
+        "Dhuhr",
+        "Asr",
+        "Maghrib",
+        "Isha",
+      ].contains(entry.key)) {
+        try {
+          DateTime prayerTime = formatter.parse(entry.value);
+          DateTime combinedPrayerTime = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            prayerTime.hour,
+            prayerTime.minute,
+          );
+          if (combinedPrayerTime.isBefore(now)) {
+            continue;
+          }
+          if (nextPrayerTime == null ||
+              combinedPrayerTime.isBefore(nextPrayerTime)) {
+            nextPrayerTime = combinedPrayerTime;
+            nextPrayer = entry.key;
+          }
+        } catch (e) {
+          print('Error parsing prayer time for ${entry.key}: $e');
+        }
+      }
+    }
+
+    // If no next prayer today, fetch tomorrow's first prayer
+    if (nextPrayerTime == null) {
+      DateTime tomorrow = now.add(Duration(days: 1));
+      Map<String, dynamic> tomorrowTimings =
+          await _prayerTimeService.getPrayerTimes(
+        _currentPosition!.latitude.toString(),
+        _currentPosition!.longitude.toString(),
+        date: tomorrow,
+      );
+
+      // Format timings for tomorrow
+      tomorrowTimings.forEach((key, value) {
+        try {
+          DateTime time = DateFormat("HH:mm").parse(value);
+          String formattedTime = formatter.format(time);
+          tomorrowTimings[key] = formattedTime;
+        } catch (e) {
+          tomorrowTimings[key] = "Invalid Time";
+        }
       });
+
+      // Get the first prayer of tomorrow
+      for (var key in ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]) {
+        if (tomorrowTimings.containsKey(key)) {
+          try {
+            DateTime prayerTime = formatter.parse(tomorrowTimings[key]);
+            nextPrayerTime = DateTime(
+              tomorrow.year,
+              tomorrow.month,
+              tomorrow.day,
+              prayerTime.hour,
+              prayerTime.minute,
+            );
+            nextPrayer = key;
+            break;
+          } catch (e) {
+            print('Error parsing prayer time for $key: $e');
+          }
+        }
+      }
+    }
+
+    // Calculate time left until next prayer
+    if (nextPrayerTime != null) {
+      _timeLeft = nextPrayerTime.difference(now);
+      _nextPrayer = nextPrayer;
+      _nextPrayerTime = formatter.format(nextPrayerTime);
+    } else {
+      _timeLeft = Duration.zero;
+      _nextPrayer = "No upcoming prayers";
+      _nextPrayerTime = "Not available";
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
+    bool isDarkTheme =
+        Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text("Prayer Times")),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : _prayerTimes == null
-              ? Center(child: Text("Failed to load prayer times"))
+              ? const Center(child: Text("Failed to load prayer times"))
               : Column(
                   children: [
-                    _buildPrayerTimeHeader(screenWidth, screenHeight),
+                    _buildPrayerTimeHeader(context),
                     Expanded(
                       child: ListView(
                         children: _prayerTimes!.entries
@@ -162,15 +240,26 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
                                   "Lastthird",
                                   "Midnight",
                                   "Imsak",
-                                  "Sunset"
+                                  "Sunset",
+                                  "Sunrise",
                                 ].contains(entry.key))
                             .map((entry) {
-                          return Card(
-                            margin: EdgeInsets.symmetric(
-                                vertical: screenHeight * 0.01),
-                            child: ListTile(
-                              title: Text(entry.key),
-                              trailing: Text(entry.value),
+                          return ListTile(
+                            leading: _getPrayerIcon(entry.key),
+                            title: Text(
+                              entry.key,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    isDarkTheme ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            trailing: Text(
+                              entry.value,
+                              style: TextStyle(
+                                color:
+                                    isDarkTheme ? Colors.white : Colors.black,
+                              ),
                             ),
                           );
                         }).toList(),
@@ -181,12 +270,20 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
     );
   }
 
-  Widget _buildPrayerTimeHeader(double screenWidth, double screenHeight) {
+  Widget _buildPrayerTimeHeader(BuildContext context) {
+    String timeLeftString = _timeLeft != null
+        ? "${_timeLeft!.inHours}h ${_timeLeft!.inMinutes.remainder(60)}m remaining"
+        : "Calculating...";
+
+    bool isDarkTheme =
+        Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
+
     return Container(
-      width: screenWidth,
-      padding: EdgeInsets.all(screenWidth * 0.05),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.teal,
+        color: isDarkTheme ? const Color(0xFF091945) : const Color(0xff682DBD),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -197,40 +294,55 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
               children: [
                 Text(
                   _nextPrayer ?? "Next Prayer",
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: screenWidth * 0.05,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   _nextPrayerTime ?? "Loading...",
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: screenWidth * 0.07,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: screenHeight * 0.005),
+                const SizedBox(height: 8.0),
                 Text(
-                  _timeLeft != null
-                      ? "Time left: ${_timeLeft!.inHours}:${_timeLeft!.inMinutes.remainder(60).toString().padLeft(2, '0')}:${_timeLeft!.inSeconds.remainder(60).toString().padLeft(2, '0')}"
-                      : "Calculating...",
-                  style: TextStyle(
+                  timeLeftString,
+                  style: const TextStyle(
                     color: Colors.white70,
-                    fontSize: screenWidth * 0.04,
+                    fontSize: 16,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
+          const Icon(
             Icons.access_time,
             color: Colors.white,
-            size: screenWidth * 0.15,
+            size: 72,
           ),
         ],
       ),
     );
+  }
+
+  Icon _getPrayerIcon(String prayerName) {
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        return const Icon(Icons.wb_twilight);
+      case 'dhuhr':
+        return const Icon(Icons.wb_sunny);
+      case 'asr':
+        return const Icon(Icons.wb_incandescent);
+      case 'maghrib':
+        return const Icon(Icons.nightlight_round);
+      case 'isha':
+        return const Icon(Icons.bedtime);
+      default:
+        return const Icon(Icons.access_time);
+    }
   }
 }

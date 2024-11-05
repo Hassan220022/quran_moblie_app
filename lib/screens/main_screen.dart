@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quaran_mobile_7th_weak/utils/provider/preference_settings_provider.dart';
+import '../utils/provider/preference_settings_provider.dart';
 import 'bookmark.dart';
-import 'quran_reader.dart';
 import 'search.dart';
 import 'surah_list.dart';
-import '../utils/route_observer/route_observer.dart';
 import 'prayer.dart'; // Ensure this import points to your PrayerTimesWidget file
+import '../utils/route_observer/route_observer.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,8 +22,15 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    const QuranReaderScreen(),
     PrayerTimesWidget(), // Your prayer times widget
+  ];
+
+  // List of titles corresponding to each screen
+  final List<String> _titles = [
+    'Surahs',
+    'Bookmarks',
+    'Search',
+    'Prayers',
   ];
 
   @override
@@ -58,35 +64,30 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
   Widget build(BuildContext context) {
     bool isDarkTheme =
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor:
-            Theme.of(context).scaffoldBackgroundColor, // Match background color
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        title: Row(
-          children: [
-            Image.asset(
-              isDarkTheme
-                  ? 'assets/icon_quran_white.png'
-                  : 'assets/icon_quran.png',
-              width: 28.0,
-            ),
-            const SizedBox(width: 6.0),
-            Text(
-              'Quran App',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ],
+        title: Text(
+          _titles[_selectedIndex],
+          style: TextStyle(
+            color: isDarkTheme ? Colors.white : const Color(0xff682DBD),
+          ),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: Image.asset(
+            isDarkTheme
+                ? 'assets/icon_quran_white.png'
+                : 'assets/icon_quran.png',
+            width: 28.0,
+          ),
         ),
         actions: [
-          const SizedBox(width: 8.0),
           IconButton(
             icon: Icon(
               isDarkTheme ? Icons.light_mode : Icons.dark_mode,
-              color: isDarkTheme
-                  ? Colors.white
-                  : const Color(0xFF5E329D), // Corrected color
+              color: isDarkTheme ? Colors.white : const Color(0xFF5E329D),
             ),
             onPressed: () {
               Provider.of<PreferenceSettingsProvider>(context, listen: false)
@@ -116,12 +117,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'Reader',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-                Icons.access_time), // Changed icon to represent prayer times
+            icon: Icon(Icons.access_time),
             label: 'Prayers',
           ),
         ],

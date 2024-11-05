@@ -89,11 +89,6 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quran Reader'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        iconTheme: Theme.of(context).iconTheme,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _isError

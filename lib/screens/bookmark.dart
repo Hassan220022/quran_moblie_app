@@ -20,12 +20,6 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookmarks'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        iconTheme: Theme.of(context).iconTheme,
-      ),
       body: bookmarks.isEmpty
           ? const Center(
               child: Text(

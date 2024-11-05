@@ -96,11 +96,6 @@ class _SurahListScreenState extends State<SurahListScreen> {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Surahs'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        iconTheme: Theme.of(context).iconTheme,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _isError
