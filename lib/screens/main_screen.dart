@@ -102,6 +102,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         unselectedItemColor: Colors.grey,
         backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(
