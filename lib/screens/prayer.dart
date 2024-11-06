@@ -29,6 +29,8 @@ class PrayerTimeService {
 }
 
 class PrayerTimesWidget extends StatefulWidget {
+  const PrayerTimesWidget({super.key});
+
   @override
   _PrayerTimesWidgetState createState() => _PrayerTimesWidgetState();
 }
@@ -167,7 +169,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
 
     // If no next prayer today, fetch tomorrow's first prayer
     if (nextPrayerTime == null) {
-      DateTime tomorrow = now.add(Duration(days: 1));
+      DateTime tomorrow = now.add(const Duration(days: 1));
       Map<String, dynamic> tomorrowTimings =
           await _prayerTimeService.getPrayerTimes(
         _currentPosition!.latitude.toString(),

@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    PrayerTimesWidget(), // Your prayer times widget
+    const PrayerTimesWidget(), // Your prayer times widget
   ];
 
   // List of titles corresponding to each screen
@@ -66,7 +66,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         elevation: 0,
         title: Text(
           _titles[_selectedIndex],
@@ -102,6 +102,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         unselectedItemColor: Colors.grey,
         backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(
