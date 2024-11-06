@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    PrayerTimesWidget(), // Your prayer times widget
+    const PrayerTimesWidget(), // Your prayer times widget
   ];
 
   // List of titles corresponding to each screen
