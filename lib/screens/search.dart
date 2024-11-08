@@ -24,7 +24,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _fetchSurahNames() async {
-    final response = await http.get(Uri.parse('http://api.alquran.cloud/v1/surah'));
+    final response =
+        await http.get(Uri.parse('http://api.alquran.cloud/v1/surah'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
@@ -33,7 +34,8 @@ class _SearchScreenState extends State<SearchScreen> {
         List surahs = data['data'];
         setState(() {
           _surahNameToNumber = {
-            for (var surah in surahs) surah['englishName'].toLowerCase(): surah['number']
+            for (var surah in surahs)
+              surah['englishName'].toLowerCase(): surah['number']
           };
         });
       } else {
