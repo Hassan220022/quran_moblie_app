@@ -15,6 +15,34 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   Surah? _searchedSurah;
   String? _errorMessage;
+  Map<String, int> _surahNameToNumber = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSurahNames();
+  }
+
+  Future<void> _fetchSurahNames() async {
+    final response = await http.get(Uri.parse('http://api.alquran.cloud/v1/surah'));
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+
+      if (data['status'] == 'OK') {
+        List surahs = data['data'];
+        setState(() {
+          _surahNameToNumber = {
+            for (var surah in surahs) surah['englishName'].toLowerCase(): surah['number']
+          };
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load Surah data.';
+        });
+      }
+    }
+  }
 
   Future<void> _searchSurah(String query) async {
     setState(() {
@@ -27,11 +55,18 @@ class _SearchScreenState extends State<SearchScreen> {
 
     // Determine if the query is a number or name
     if (int.tryParse(query) != null) {
-      // Search by Surah number
       apiUrl = 'http://api.alquran.cloud/v1/surah/$query/en.asad';
     } else {
-      // Search by Surah name (case-insensitive)
-      apiUrl = 'http://api.alquran.cloud/v1/surah/$query/en.asad';
+      int? surahNumber = _surahNameToNumber[query.toLowerCase()];
+      if (surahNumber != null) {
+        apiUrl = 'http://api.alquran.cloud/v1/surah/$surahNumber/en.asad';
+      } else {
+        setState(() {
+          _errorMessage = 'Surah not found.';
+          _isLoading = false;
+        });
+        return;
+      }
     }
 
     try {
@@ -81,7 +116,6 @@ class _SearchScreenState extends State<SearchScreen> {
             fontSize: 19,
             fontWeight: FontWeight.bold,
           ),
-          textAlign: TextAlign.left, // Center the text
         ),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
