@@ -4,7 +4,7 @@ import '../utils/provider/preference_settings_provider.dart';
 import 'bookmark.dart';
 import 'search.dart';
 import 'surah_list.dart';
-import 'prayer.dart'; // Ensure this import points to your PrayerTimesWidget file
+import 'prayer.dart';
 import '../utils/route_observer/route_observer.dart';
 
 class MainScreen extends StatefulWidget {
