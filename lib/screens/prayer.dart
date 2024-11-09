@@ -254,6 +254,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
                                 fontWeight: FontWeight.bold,
                                 color:
                                     isDarkTheme ? Colors.white : Colors.black,
+                                fontSize: 20,
                               ),
                             ),
                             trailing: Text(
@@ -261,6 +262,7 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
                               style: TextStyle(
                                 color:
                                     isDarkTheme ? Colors.white : Colors.black,
+                                fontSize: 16,
                               ),
                             ),
                           );

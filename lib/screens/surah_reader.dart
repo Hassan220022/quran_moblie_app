@@ -1,4 +1,3 @@
-// lib/screens/surah_reader.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -6,7 +5,7 @@ import 'dart:convert';
 import '../utils/provider/preference_settings_provider.dart';
 import '../utils/provider/bookmarks_provider.dart';
 import '../models/bookmark.dart';
-import '../services/audio_player_service.dart'; // Updated import
+import '../services/audio_player_service.dart';
 
 class Ayah {
   final int numberInSurah;
