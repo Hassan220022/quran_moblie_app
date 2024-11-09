@@ -22,10 +22,9 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const SurahListScreen(),
     const BookmarkScreen(),
     const SearchScreen(),
-    const PrayerTimesWidget(), // Your prayer times widget
+    const PrayerTimesWidget(),
   ];
 
-  // List of titles corresponding to each screen
   final List<String> _titles = [
     'Surahs',
     'Bookmarks',
@@ -96,7 +95,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ),
         ],
       ),
-      body: _screens[_selectedIndex], // Displays the selected screen
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color(0xff682DBD),
         unselectedItemColor: Colors.grey,
