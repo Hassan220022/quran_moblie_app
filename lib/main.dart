@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'utils/provider/preference_settings_provider.dart';
 import 'screens/main_screen.dart';
-// Added import
-import 'utils/provider/bookmarks_provider.dart'; // Import BookmarksProvider
+import 'utils/provider/bookmarks_provider.dart'; 
 
 void main() {
   runApp(
@@ -67,11 +66,8 @@ class MyApp extends StatelessWidget {
           themeMode:
               prefSetProvider.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
           home: const MainScreen(),
-          // navigatorObservers: [routeObserver],
         );
       },
     );
   }
 }
-
-// route_observer.dart is imported from utils/route_observer/route_observer.dart
