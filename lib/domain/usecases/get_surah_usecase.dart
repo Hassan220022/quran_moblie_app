@@ -185,3 +185,4 @@ class GetSurahUseCase {
     return Success(surahWithTranslation);
   }
 }
+ 

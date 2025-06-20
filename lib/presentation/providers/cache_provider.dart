@@ -69,7 +69,7 @@ class CacheProvider extends ChangeNotifier {
 
       final result = await _repository!.clearCache();
       if (result is Success<void>) {
-        await updateCacheInfo();
+      await updateCacheInfo();
       } else {
         throw Exception('Failed to clear cache');
       }

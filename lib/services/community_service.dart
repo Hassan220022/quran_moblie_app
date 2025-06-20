@@ -402,3 +402,4 @@ class CommunityService {
     return monthProgress;
   }
 }
+ 

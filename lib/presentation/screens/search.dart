@@ -66,15 +66,15 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       }
 
-      setState(() {
+          setState(() {
         if (foundSurah != null) {
           _searchedSurah = foundSurah;
         } else {
           _errorMessage =
               'Surah not found. Try searching by number (1-114) or English name.';
         }
-        _isLoading = false;
-      });
+          _isLoading = false;
+        });
     } catch (e) {
       setState(() {
         _errorMessage = 'An error occurred while searching.';

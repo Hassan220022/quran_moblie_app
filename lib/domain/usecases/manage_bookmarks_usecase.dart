@@ -317,3 +317,4 @@ class BookmarkStatistics {
         'mostBookmarkedSurah: $mostBookmarkedSurah}';
   }
 }
+ 

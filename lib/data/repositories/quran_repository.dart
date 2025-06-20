@@ -98,29 +98,31 @@ class QuranRepository implements QuranRepositoryInterface {
   @override
   Future<Result<Surah>> getSurah(int surahNumber) async {
     try {
-      // Check cache first
+      // Check cache first, but only use it if it has verses
       final cached = _surahBox.get(surahNumber);
-      if (cached != null && !cached.isExpired) {
+      if (cached != null && !cached.isExpired && cached.ayahs.isNotEmpty) {
         return Success(_convertCachedSurahToEntity(cached));
       }
 
       // Check internet connection
       if (!await _hasInternetConnection) {
-        if (cached != null) {
-          // Return expired cache if no internet
+        if (cached != null && cached.ayahs.isNotEmpty) {
+          // Return expired cache if no internet but has verses
           return Success(_convertCachedSurahToEntity(cached));
         }
         return ResultError(const NetworkFailure(
-            message: 'No internet connection and no cached data'));
+            message: 'No internet connection and no complete cached data'));
       }
 
-      // Fetch from remote
+      // Fetch complete surah with verses from remote
       final surahData = await remoteDataSource.getSurah(surahNumber);
       final surah = _convertApiDataToSurah(surahData);
 
-      // Cache the surah
-      final cachedSurah = _convertSurahToCached(surah);
-      await _surahBox.put(surahNumber, cachedSurah);
+      // Only cache if we got verses
+      if (surah.verses.isNotEmpty) {
+        final cachedSurah = _convertSurahToCached(surah);
+        await _surahBox.put(surahNumber, cachedSurah);
+      }
 
       return Success(surah);
     } on Failure catch (failure) {
@@ -393,13 +395,20 @@ class QuranRepository implements QuranRepositoryInterface {
 
   Surah _convertApiDataToSurah(Map<String, dynamic> data) {
     final verses = <Verse>[];
-    if (data['ayahs'] != null) {
-      for (final ayahData in data['ayahs']) {
-        final verse = Verse(
-          number: ayahData['numberInSurah'] ?? 0,
-          arabicText: ayahData['text'] ?? '',
-        );
-        verses.add(verse);
+
+    // According to alquran.cloud API docs, ayahs are in 'ayahs' array
+    if (data.containsKey('ayahs') && data['ayahs'] is List) {
+      final ayahsList = data['ayahs'] as List;
+
+      for (final ayahData in ayahsList) {
+        if (ayahData is Map<String, dynamic>) {
+          final verse = Verse(
+            number: ayahData['numberInSurah'] ?? ayahData['number'] ?? 0,
+            arabicText: ayahData['text'] ?? '',
+            translation: ayahData['translation'], // if available
+          );
+          verses.add(verse);
+        }
       }
     }
 

@@ -46,50 +46,77 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     _audioPlayerService = AudioPlayerService();
     _quranService = QuranService();
     _initializeBrightness();
-    _loadSurah();
-    _loadTranslations();
-    _loadTafsir();
+
+    // Load surah data after the initial build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSurah();
+      _loadTranslations();
+      _loadTafsir();
+    });
 
     // Set up scroll listener for progress tracking
     _scrollController.addListener(_onScroll);
   }
 
   Future<void> _loadSurah() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+    });
+
     try {
-      setState(() {
-        _isLoading = true;
-        _isError = false;
-      });
-
       final surahProvider = context.read<SurahProvider>();
+      final success = await surahProvider.loadSurah(widget.surahNumber);
 
-      // Load the surah if not already loaded
-      if (surahProvider.getSurahByNumber(widget.surahNumber) == null) {
-        await surahProvider.loadSurah(widget.surahNumber);
-      }
+      if (!mounted) return;
 
-      final surah = surahProvider.getSurahByNumber(widget.surahNumber);
+      if (success) {
+        final surah = surahProvider.getSurahByNumber(widget.surahNumber);
 
-      if (surah != null) {
-        setState(() {
-          _ayahs = surah.verses.where((verse) {
-            String normalizedText = normalizeText(verse.arabicText);
+        if (surah != null && surah.verses.isNotEmpty) {
+          final filteredVerses = surah.verses.where((verse) {
+            final normalizedText = normalizeText(verse.arabicText);
             return !normalizedText.contains('بِسْمِ ٱللَّهِ');
           }).toList();
-          _totalAyahs = surah.numberOfAyahs;
-          _isLoading = false;
-        });
+
+          setState(() {
+            _ayahs = filteredVerses;
+            _totalAyahs = surah.numberOfAyahs;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isError = true;
+            _isLoading = false;
+          });
+        }
       } else {
+        // Check if there's an error message from the provider
+        final errorMessage = surahProvider.errorMessage;
         setState(() {
           _isError = true;
           _isLoading = false;
         });
+
+        if (mounted && errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage)),
+          );
+        }
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isError = true;
         _isLoading = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load surah')),
+      );
     }
   }
 

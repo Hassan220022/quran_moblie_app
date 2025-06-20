@@ -13,19 +13,18 @@ class QuranRemoteDataSource {
 
   // ========================= SURAH OPERATIONS =========================
 
-  /// Fetch all surahs metadata from API
+  /// Fetch all surahs metadata from API (using /surah endpoint per API docs)
   Future<List<Map<String, dynamic>>> getAllSurahs() async {
     try {
       final response = await client.get(
-        Uri.parse('${AppConstants.quranApiBaseUrl}/meta'),
+        Uri.parse('${AppConstants.quranApiBaseUrl}/surah'),
         headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'OK' && data['data'] != null) {
-          return List<Map<String, dynamic>>.from(
-              data['data']['surahs']['references']);
+          return List<Map<String, dynamic>>.from(data['data']);
         } else {
           throw ServerFailure(
             message: 'Invalid API response format',
@@ -48,7 +47,7 @@ class QuranRemoteDataSource {
     }
   }
 
-  /// Fetch specific surah with verses from API
+  /// Fetch specific surah with verses from API (per official API docs)
   Future<Map<String, dynamic>> getSurah(int surahNumber) async {
     try {
       final response = await client.get(
@@ -58,8 +57,19 @@ class QuranRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
         if (data['status'] == 'OK' && data['data'] != null) {
-          return data['data'];
+          final surahData = data['data'];
+
+          // Validate that we have the required structure
+          if (surahData['ayahs'] == null || surahData['ayahs'].isEmpty) {
+            throw ServerFailure(
+              message: 'Surah $surahNumber returned without verses',
+              code: 422,
+            );
+          }
+
+          return surahData;
         } else {
           throw ServerFailure(
             message: 'Invalid API response format for surah $surahNumber',
