@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../utils/provider/preference_settings_provider.dart';
+import '../widgets/enhanced_loading.dart';
 
 class PrayerTimeService {
   Future<Map<String, dynamic>> getPrayerTimes(String latitude, String longitude,
@@ -228,50 +229,155 @@ class _PrayerTimesWidgetState extends State<PrayerTimesWidget> {
 
     return Scaffold(
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: EnhancedLoading(
+                message: 'Loading Prayer Times...',
+                style: LoadingStyle.prayerStyle,
+              ),
+            )
           : _prayerTimes == null
-              ? const Center(child: Text("Failed to load prayer times"))
-              : Column(
-                  children: [
-                    _buildPrayerTimeHeader(context),
-                    Expanded(
-                      child: ListView(
-                        children: _prayerTimes!.entries
-                            .where((entry) => ![
-                                  "Firstthird",
-                                  "Lastthird",
-                                  "Midnight",
-                                  "Imsak",
-                                  "Sunset",
-                                  "Sunrise",
-                                ].contains(entry.key))
-                            .map((entry) {
-                          return ListTile(
-                            leading: _getPrayerIcon(entry.key),
-                            title: Text(
-                              entry.key,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    isDarkTheme ? Colors.white : Colors.black,
-                                fontSize: 20,
-                              ),
-                            ),
-                            trailing: Text(
-                              entry.value,
-                              style: TextStyle(
-                                color:
-                                    isDarkTheme ? Colors.white : Colors.black,
-                                fontSize: 16,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.location_off,
+                        size: 64,
+                        color: isDarkTheme ? Colors.white70 : Colors.grey,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Failed to load prayer times',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkTheme ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please check location permissions',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDarkTheme ? Colors.white70 : Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => _refreshPrayerTimes(),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _refreshPrayerTimes,
+                  color: const Color(0xFF667eea),
+                  child: Column(
+                    children: [
+                      _buildPrayerTimeHeader(context),
+                      Expanded(
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: _prayerTimes!.entries
+                              .where((entry) => ![
+                                    "Firstthird",
+                                    "Lastthird",
+                                    "Midnight",
+                                    "Imsak",
+                                    "Sunset",
+                                    "Sunrise",
+                                  ].contains(entry.key))
+                              .map((entry) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isDarkTheme
+                                      ? [
+                                          const Color(0xFF2a2a3e),
+                                          const Color(0xFF1e1e2e)
+                                        ]
+                                      : [Colors.white, const Color(0xFFf8f9fa)],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDarkTheme
+                                        ? Colors.black.withOpacity(0.3)
+                                        : Colors.grey.withOpacity(0.1),
+                                    spreadRadius: 1,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF2196F3),
+                                        Color(0xFF1976D2),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: _getPrayerIcon(entry.key),
+                                ),
+                                title: Text(
+                                  entry.key,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDarkTheme
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2196F3)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    entry.value,
+                                    style: TextStyle(
+                                      color: isDarkTheme
+                                          ? Colors.white
+                                          : Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
     );
+  }
+
+  Future<void> _refreshPrayerTimes() async {
+    setState(() {
+      _isLoading = true;
+      _prayerTimes = null;
+    });
+    await _determinePosition();
   }
 
   Widget _buildPrayerTimeHeader(BuildContext context) {
