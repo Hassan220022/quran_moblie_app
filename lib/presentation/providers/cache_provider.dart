@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
-import '../../data/repositories/quran_repository.dart';
+import '../../core/utils/dependency_injection.dart';
+import '../../domain/repositories/quran_repository_interface.dart';
 
 class CacheProvider extends ChangeNotifier {
-  QuranRepository? _repository;
+  QuranRepositoryInterface? _repository;
   bool _isInitialized = false;
   Map<String, dynamic> _cacheInfo = {};
   bool _isLoading = false;
 
-  QuranRepository? get repository => _repository;
+  QuranRepositoryInterface? get repository => _repository;
   bool get isInitialized => _isInitialized;
   Map<String, dynamic> get cacheInfo => _cacheInfo;
   bool get isLoading => _isLoading;
@@ -20,10 +20,7 @@ class CacheProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      final dio = Dio();
-      _repository = QuranRepository(dio);
-      await _repository!.initialize();
-
+      _repository = DependencyInjection.quranRepository;
       await updateCacheInfo();
 
       _isInitialized = true;
@@ -40,7 +37,23 @@ class CacheProvider extends ChangeNotifier {
     if (_repository == null) return;
 
     try {
-      _cacheInfo = await _repository!.getCacheInfo();
+      final cacheSizeResult = await _repository!.getCacheSize();
+      final cachedSurahsResult = await _repository!.getCachedSurahs();
+
+      if (cacheSizeResult is Success<int> &&
+          cachedSurahsResult is Success<List<int>>) {
+        _cacheInfo = {
+          'cache_size_bytes': cacheSizeResult.data,
+          'cached_surahs': cachedSurahsResult.data,
+          'total_cache_items': cachedSurahsResult.data.length,
+        };
+      } else {
+        _cacheInfo = {
+          'cache_size_bytes': 0,
+          'cached_surahs': <int>[],
+          'total_cache_items': 0,
+        };
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to update cache info: $e');
@@ -54,8 +67,12 @@ class CacheProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      await _repository!.clearCache();
-      await updateCacheInfo();
+      final result = await _repository!.clearCache();
+      if (result is Success<void>) {
+        await updateCacheInfo();
+      } else {
+        throw Exception('Failed to clear cache');
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -68,8 +85,9 @@ class CacheProvider extends ChangeNotifier {
 
   // Get formatted cache size
   String get formattedCacheSize {
-    final sizeStr = _cacheInfo['audio_cache_size_mb'] ?? '0.00';
-    return '$sizeStr MB';
+    final sizeBytes = _cacheInfo['cache_size_bytes'] ?? 0;
+    final sizeMB = sizeBytes / 1024 / 1024;
+    return '${sizeMB.toStringAsFixed(2)} MB';
   }
 
   // Get total cached items
@@ -77,15 +95,17 @@ class CacheProvider extends ChangeNotifier {
     return _cacheInfo['total_cache_items'] ?? 0;
   }
 
+  // Get cached surahs list
+  List<int> get cachedSurahs {
+    return List<int>.from(_cacheInfo['cached_surahs'] ?? []);
+  }
+
   // Get offline capability status
   String get offlineStatus {
-    final surahs = _cacheInfo['surahs_cached'] ?? 0;
-    final prayers = _cacheInfo['prayer_times_cached'] ?? 0;
+    final cachedSurahsList = cachedSurahs;
 
-    if (surahs > 0 && prayers > 0) {
-      return 'Partially available offline';
-    } else if (surahs > 0) {
-      return 'Quran text available offline';
+    if (cachedSurahsList.isNotEmpty) {
+      return 'Quran text available offline (${cachedSurahsList.length} surahs)';
     } else {
       return 'No offline content';
     }

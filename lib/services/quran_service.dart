@@ -2,13 +2,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../data/models/translation.dart';
 import '../data/models/tafsir.dart';
-import '../data/repositories/quran_repository.dart';
+import '../domain/repositories/quran_repository_interface.dart';
+import '../domain/entities/surah_entity.dart';
 
 class QuranService {
   static const String baseUrl = 'http://api.alquran.cloud/v1';
-  final QuranRepository? _repository;
+  final QuranRepositoryInterface? _repository;
 
-  QuranService({QuranRepository? repository}) : _repository = repository;
+  QuranService({QuranRepositoryInterface? repository})
+      : _repository = repository;
 
   Future<TranslationSet> getTranslations(
       int surahNumber, List<String> editions) async {
@@ -111,10 +113,22 @@ class QuranService {
     }
   }
 
-  // Repository-enhanced methods
+  // Repository-enhanced methods using clean architecture
   Future<List<Map<String, dynamic>>> getSurahs() async {
     if (_repository != null) {
-      return await _repository!.getSurahs();
+      final result = await _repository!.getAllSurahs();
+      if (result is Success<List<Surah>>) {
+        return result.data
+            .map((surah) => {
+                  'number': surah.number,
+                  'name': surah.name,
+                  'englishName': surah.englishName,
+                  'englishNameTranslation': surah.englishNameTranslation,
+                  'revelationType': surah.revelationType,
+                  'numberOfAyahs': surah.numberOfAyahs,
+                })
+            .toList();
+      }
     }
 
     // Fallback to direct API call
@@ -123,21 +137,38 @@ class QuranService {
 
   Future<Map<String, dynamic>> getSurah(int surahNumber) async {
     if (_repository != null) {
-      return await _repository!.getSurah(surahNumber);
+      final result = await _repository!.getSurah(surahNumber);
+      if (result is Success<Surah>) {
+        final surah = result.data;
+        return {
+          'number': surah.number,
+          'name': surah.name,
+          'englishName': surah.englishName,
+          'englishNameTranslation': surah.englishNameTranslation,
+          'revelationType': surah.revelationType,
+          'numberOfAyahs': surah.numberOfAyahs,
+          'ayahs': surah.verses
+              .map((verse) => {
+                    'numberInSurah': verse.number,
+                    'text': verse.arabicText,
+                  })
+              .toList(),
+        };
+      }
     }
 
     // Fallback to direct API call
     return await getSurahFromAPI(surahNumber);
   }
 
-  // Download audio file (cached if repository available)
-  Future<String?> downloadAudioFile(int surahNumber, int ayahNumber) async {
-    if (_repository != null) {
-      return await _repository!.downloadAudioFile(surahNumber, ayahNumber);
-    }
+  // Audio URL generation (no caching in new architecture)
+  String? getAudioUrl(int surahNumber, int ayahNumber, String reciterKey) {
+    // Generate audio URL based on reciter and ayah numbers
+    String surahStr = surahNumber.toString().padLeft(3, '0');
+    String ayahStr = ayahNumber.toString().padLeft(3, '0');
 
-    // Return null if no repository (no caching available)
-    return null;
+    // Default reciter URL pattern
+    return 'https://everyayah.com/data/AbdulSamad_64kbps_QuranExplorer.Com/$surahStr$ayahStr.mp3';
   }
 
   // Static methods for direct API access (backward compatibility)

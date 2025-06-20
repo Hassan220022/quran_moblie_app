@@ -1,420 +1,472 @@
-import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import '../../core/errors/failures.dart';
+import '../../domain/entities/surah_entity.dart';
+import '../../domain/repositories/quran_repository_interface.dart';
+import '../datasources/quran_remote_datasource.dart';
 import '../models/cached_surah.dart';
-import '../models/cached_prayer_times.dart';
-import '../models/cached_audio.dart';
+import '../models/bookmark.dart';
+import '../models/reading_progress.dart' as data_models;
 
-class QuranRepository {
-  final Dio _dio;
+/// Implementation of QuranRepositoryInterface following clean architecture
+/// Handles data persistence, caching, and coordination between local and remote sources
+class QuranRepository implements QuranRepositoryInterface {
+  final QuranRemoteDataSource remoteDataSource;
+  final Connectivity connectivity;
+
+  // Hive boxes for local storage
   late Box<CachedSurah> _surahBox;
-  late Box<CachedPrayerTimes> _prayerTimesBox;
-  late Box<CachedAudioFile> _audioBox;
-  final Connectivity _connectivity;
+  late Box<Bookmark> _bookmarkBox;
+  late Box<data_models.ReadingProgress> _progressBox;
 
-  QuranRepository(this._dio) : _connectivity = Connectivity();
+  QuranRepository({
+    required this.remoteDataSource,
+    required this.connectivity,
+  });
 
-  // Initialize Hive boxes
+  /// Initialize local storage boxes
   Future<void> initialize() async {
-    _surahBox = await Hive.openBox<CachedSurah>('surahs');
-    _prayerTimesBox = await Hive.openBox<CachedPrayerTimes>('prayer_times');
-    _audioBox = await Hive.openBox<CachedAudioFile>('audio_files');
-  }
-
-  // Check internet connectivity
-  Future<bool> get hasInternetConnection async {
-    final connectivityResult = await _connectivity.checkConnectivity();
-    return connectivityResult != ConnectivityResult.none;
-  }
-
-  // Get all Surahs with caching
-  Future<List<Map<String, dynamic>>> getSurahs() async {
-    // Check cache first
-    final cached = _surahBox.values.toList();
-    if (cached.isNotEmpty && !cached.first.isExpired) {
-      return cached
-          .map((surah) => {
-                'number': surah.number,
-                'name': surah.name,
-                'englishName': surah.englishName,
-                'revelationType': surah.revelationType,
-                'numberOfAyahs': surah.numberOfAyahs,
-              })
-          .toList();
-    }
-
-    // If no internet, return cached data even if expired
-    if (!await hasInternetConnection) {
-      if (cached.isNotEmpty) {
-        return cached
-            .map((surah) => {
-                  'number': surah.number,
-                  'name': surah.name,
-                  'englishName': surah.englishName,
-                  'revelationType': surah.revelationType,
-                  'numberOfAyahs': surah.numberOfAyahs,
-                })
-            .toList();
-      }
-      throw Exception('No internet connection and no cached data available');
-    }
-
     try {
-      // Fetch from API
-      final response =
-          await _dio.get('http://api.alquran.cloud/v1/quran/quran-uthmani');
+      _surahBox = await Hive.openBox<CachedSurah>('surahs');
+      _bookmarkBox = await Hive.openBox<Bookmark>('bookmarks');
+      _progressBox =
+          await Hive.openBox<data_models.ReadingProgress>('reading_progress');
+    } catch (e) {
+      throw StorageFailure(message: 'Failed to initialize storage: $e');
+    }
+  }
 
-      if (response.statusCode == 200 && response.data['status'] == 'OK') {
-        final List<dynamic> surahs = response.data['data']['surahs'];
+  /// Check if device has internet connection
+  Future<bool> get _hasInternetConnection async {
+    try {
+      final result = await connectivity.checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
+  }
 
-        // Clear old cache
-        await _surahBox.clear();
+  // ========================= SURAH OPERATIONS =========================
 
-        // Cache new data
-        for (var surah in surahs) {
-          final cachedSurah = CachedSurah.fromJson(surah);
-          await _surahBox.put(surah['number'], cachedSurah);
+  @override
+  Future<Result<List<Surah>>> getAllSurahs() async {
+    try {
+      // Check cache first
+      final cachedSurahs = _surahBox.values.toList();
+      if (cachedSurahs.isNotEmpty && !cachedSurahs.first.isExpired) {
+        final surahs = cachedSurahs.map(_convertCachedSurahToEntity).toList();
+        return Success(surahs);
+      }
+
+      // Check internet connection
+      if (!await _hasInternetConnection) {
+        if (cachedSurahs.isNotEmpty) {
+          // Return expired cache if no internet
+          final surahs = cachedSurahs.map(_convertCachedSurahToEntity).toList();
+          return Success(surahs);
         }
-
-        return surahs.cast<Map<String, dynamic>>();
+        return ResultError(const NetworkFailure(
+            message: 'No internet connection and no cached data'));
       }
 
-      throw Exception('Failed to load surahs from API');
+      // Fetch from remote
+      final surahsData = await remoteDataSource.getAllSurahs();
+
+      // Convert and cache
+      final surahs = <Surah>[];
+      await _surahBox.clear();
+
+      for (final surahData in surahsData) {
+        final surah = _convertApiDataToSurah(surahData);
+        surahs.add(surah);
+
+        // Cache the surah
+        final cachedSurah = _convertSurahToCached(surah);
+        await _surahBox.put(surah.number, cachedSurah);
+      }
+
+      return Success(surahs);
+    } on Failure catch (failure) {
+      return ResultError(failure);
     } catch (e) {
-      // If API fails, return cached data
-      if (cached.isNotEmpty) {
-        return cached
-            .map((surah) => {
-                  'number': surah.number,
-                  'name': surah.name,
-                  'englishName': surah.englishName,
-                  'revelationType': surah.revelationType,
-                  'numberOfAyahs': surah.numberOfAyahs,
-                })
-            .toList();
-      }
-      rethrow;
+      return ResultError(ServerFailure(message: 'Unexpected error: $e'));
     }
   }
 
-  // Get specific Surah with caching
-  Future<Map<String, dynamic>> getSurah(int surahNumber) async {
-    // Check cache first
-    final cached = _surahBox.get(surahNumber);
-    if (cached != null && !cached.isExpired) {
-      return {
-        'number': cached.number,
-        'name': cached.name,
-        'englishName': cached.englishName,
-        'revelationType': cached.revelationType,
-        'numberOfAyahs': cached.numberOfAyahs,
-        'ayahs': cached.ayahs
-            .map((ayah) => {
-                  'number': ayah.number,
-                  'text': ayah.text,
-                  'numberInSurah': ayah.numberInSurah,
-                })
-            .toList(),
-      };
-    }
-
-    // If no internet, return cached data even if expired
-    if (!await hasInternetConnection) {
-      if (cached != null) {
-        return {
-          'number': cached.number,
-          'name': cached.name,
-          'englishName': cached.englishName,
-          'revelationType': cached.revelationType,
-          'numberOfAyahs': cached.numberOfAyahs,
-          'ayahs': cached.ayahs
-              .map((ayah) => {
-                    'number': ayah.number,
-                    'text': ayah.text,
-                    'numberInSurah': ayah.numberInSurah,
-                  })
-              .toList(),
-        };
-      }
-      throw Exception('No internet connection and no cached data available');
-    }
-
+  @override
+  Future<Result<Surah>> getSurah(int surahNumber) async {
     try {
-      // Fetch from API
-      final response = await _dio
-          .get('http://api.alquran.cloud/v1/surah/$surahNumber/quran-uthmani');
-
-      if (response.statusCode == 200 && response.data['status'] == 'OK') {
-        final surahData = response.data['data'];
-
-        // Cache the data
-        final cachedSurah = CachedSurah.fromJson(surahData);
-        await _surahBox.put(surahNumber, cachedSurah);
-
-        return surahData;
+      // Check cache first
+      final cached = _surahBox.get(surahNumber);
+      if (cached != null && !cached.isExpired) {
+        return Success(_convertCachedSurahToEntity(cached));
       }
 
-      throw Exception('Failed to load surah from API');
+      // Check internet connection
+      if (!await _hasInternetConnection) {
+        if (cached != null) {
+          // Return expired cache if no internet
+          return Success(_convertCachedSurahToEntity(cached));
+        }
+        return ResultError(const NetworkFailure(
+            message: 'No internet connection and no cached data'));
+      }
+
+      // Fetch from remote
+      final surahData = await remoteDataSource.getSurah(surahNumber);
+      final surah = _convertApiDataToSurah(surahData);
+
+      // Cache the surah
+      final cachedSurah = _convertSurahToCached(surah);
+      await _surahBox.put(surahNumber, cachedSurah);
+
+      return Success(surah);
+    } on Failure catch (failure) {
+      return ResultError(failure);
     } catch (e) {
-      // If API fails, return cached data
-      if (cached != null) {
-        return {
-          'number': cached.number,
-          'name': cached.name,
-          'englishName': cached.englishName,
-          'revelationType': cached.revelationType,
-          'numberOfAyahs': cached.numberOfAyahs,
-          'ayahs': cached.ayahs
-              .map((ayah) => {
-                    'number': ayah.number,
-                    'text': ayah.text,
-                    'numberInSurah': ayah.numberInSurah,
-                  })
-              .toList(),
-        };
-      }
-      rethrow;
+      return ResultError(ServerFailure(message: 'Unexpected error: $e'));
     }
   }
 
-  // Get Prayer Times with caching
-  Future<Map<String, dynamic>> getPrayerTimes(double latitude, double longitude,
-      {DateTime? date}) async {
-    final targetDate = date ?? DateTime.now();
+  @override
+  Future<Result<Verse>> getVerse(int surahNumber, int verseNumber) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
 
-    // Check cache first
-    final cached = _prayerTimesBox.values
-        .where((pt) => pt.isForLocation(latitude, longitude) && !pt.isExpired)
-        .firstOrNull;
+  @override
+  Future<Result<List<Verse>>> getVerses(
+    int surahNumber, {
+    int? startVerse,
+    int? endVerse,
+  }) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
 
-    if (cached != null) {
-      return cached.toTimingsMap();
-    }
+  // ========================= SEARCH OPERATIONS =========================
 
-    // If no internet, return cached data even if expired
-    if (!await hasInternetConnection) {
-      final expiredCached = _prayerTimesBox.values
-          .where((pt) => pt.isForLocation(latitude, longitude))
-          .firstOrNull;
+  @override
+  Future<Result<List<Verse>>> searchArabicText(String query) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
 
-      if (expiredCached != null) {
-        return expiredCached.toTimingsMap();
-      }
-      throw Exception(
-          'No internet connection and no cached prayer times available');
-    }
+  @override
+  Future<Result<List<Verse>>> searchTranslation(
+      String query, String translationKey) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
 
+  @override
+  Future<Result<List<Surah>>> searchSurahs(String query) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= TRANSLATION OPERATIONS =========================
+
+  @override
+  Future<Result<List<TranslationInfo>>> getAvailableTranslations() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<String>> getVerseTranslation(
+    int surahNumber,
+    int verseNumber,
+    String translationKey,
+  ) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<List<String>>> getSurahTranslations(
+    int surahNumber,
+    String translationKey,
+  ) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= TAFSIR OPERATIONS =========================
+
+  @override
+  Future<Result<List<TafsirInfo>>> getAvailableTafsirs() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<String>> getVerseTafsir(
+    int surahNumber,
+    int verseNumber,
+    String tafsirKey,
+  ) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= AUDIO OPERATIONS =========================
+
+  @override
+  Future<Result<List<ReciterInfo>>> getAvailableReciters() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<String>> getVerseAudioUrl(
+    int surahNumber,
+    int verseNumber,
+    String reciterKey,
+  ) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<String>> getSurahAudioUrl(
+      int surahNumber, String reciterKey) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= BOOKMARK OPERATIONS =========================
+
+  @override
+  Future<Result<List<BookmarkedVerse>>> getBookmarkedVerses() async {
     try {
-      String dateString = '';
-      if (date != null) {
-        dateString = '&date=${date.day}-${date.month}-${date.year}';
-      }
+      final bookmarks = _bookmarkBox.values.toList();
+      final bookmarkedVerses = <BookmarkedVerse>[];
 
-      final url =
-          'https://api.aladhan.com/v1/timings?latitude=$latitude&longitude=$longitude$dateString';
-      final response = await _dio.get(url);
+      for (final bookmark in bookmarks) {
+        // Get the verse details from cache or API
+        final surahResult = await getSurah(bookmark.surahNumber);
+        if (surahResult is Success<Surah>) {
+          final surah = surahResult.data;
+          final verse = surah.verses.firstWhere(
+            (v) => v.number == bookmark.ayahNumber,
+            orElse: () => Verse(
+              number: bookmark.ayahNumber,
+              arabicText: bookmark.text,
+            ),
+          );
 
-      if (response.statusCode == 200) {
-        final timings = response.data['data']['timings'];
+          final bookmarkedVerse = BookmarkedVerse(
+            surahNumber: bookmark.surahNumber,
+            verseNumber: bookmark.ayahNumber,
+            surahName: surah.name,
+            arabicText: verse.arabicText,
+            translation: verse.translation,
+            note: bookmark.note,
+            createdAt: bookmark.createdAt,
+          );
 
-        // Cache the data
-        final cachedPrayerTimes = CachedPrayerTimes.fromJson(
-          timings,
-          targetDate,
-          latitude,
-          longitude,
-        );
-
-        await _prayerTimesBox.add(cachedPrayerTimes);
-
-        return timings;
-      }
-
-      throw Exception('Failed to load prayer times from API');
-    } catch (e) {
-      // If API fails, return any cached data
-      final expiredCached = _prayerTimesBox.values
-          .where((pt) => pt.isForLocation(latitude, longitude))
-          .firstOrNull;
-
-      if (expiredCached != null) {
-        return expiredCached.toTimingsMap();
-      }
-      rethrow;
-    }
-  }
-
-  // Download and cache audio file
-  Future<String?> downloadAudioFile(int surahNumber, int ayahNumber) async {
-    final fileName =
-        '${surahNumber.toString().padLeft(3, '0')}${ayahNumber.toString().padLeft(3, '0')}.mp3';
-
-    // Check if already cached
-    final cached = _audioBox.values
-        .where((audio) =>
-            audio.surahNumber == surahNumber &&
-            audio.ayahNumber == ayahNumber &&
-            !audio.isExpired)
-        .firstOrNull;
-
-    if (cached != null && File(cached.localPath).existsSync()) {
-      return cached.localPath;
-    }
-
-    if (!await hasInternetConnection) {
-      // Return cached file even if expired if no internet
-      final expiredCached = _audioBox.values
-          .where((audio) =>
-              audio.surahNumber == surahNumber &&
-              audio.ayahNumber == ayahNumber)
-          .firstOrNull;
-
-      if (expiredCached != null && File(expiredCached.localPath).existsSync()) {
-        return expiredCached.localPath;
-      }
-      return null;
-    }
-
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final audioDir = Directory('${directory.path}/audio');
-      if (!audioDir.existsSync()) {
-        audioDir.createSync(recursive: true);
-      }
-
-      final localPath = '${audioDir.path}/$fileName';
-      final url =
-          'https://everyayah.com/data/AbdulSamad_64kbps_QuranExplorer.Com/$fileName';
-
-      final response = await _dio.download(url, localPath);
-
-      if (response.statusCode == 200) {
-        final file = File(localPath);
-        final fileSize = await file.length();
-
-        // Cache metadata
-        final cachedAudio = CachedAudioFile(
-          surahNumber: surahNumber,
-          ayahNumber: ayahNumber,
-          localPath: localPath,
-          originalUrl: url,
-          fileSize: fileSize,
-          downloadedAt: DateTime.now(),
-        );
-
-        await _audioBox.add(cachedAudio);
-
-        return localPath;
-      }
-
-      return null;
-    } catch (e) {
-      // Return cached file if download fails
-      final expiredCached = _audioBox.values
-          .where((audio) =>
-              audio.surahNumber == surahNumber &&
-              audio.ayahNumber == ayahNumber)
-          .firstOrNull;
-
-      if (expiredCached != null && File(expiredCached.localPath).existsSync()) {
-        return expiredCached.localPath;
-      }
-      return null;
-    }
-  }
-
-  // Get translations with caching
-  Future<List<Map<String, dynamic>>> getTranslations(
-      int surahNumber, List<String> editions) async {
-    // For now, we'll implement basic API call
-    // In a full implementation, you'd cache translations too
-    if (!await hasInternetConnection) {
-      throw Exception('No internet connection - translations not cached yet');
-    }
-
-    try {
-      final editionsParam = editions.join(',');
-      final url =
-          'http://api.alquran.cloud/v1/surah/$surahNumber/editions/$editionsParam';
-
-      final response = await _dio.get(url);
-
-      if (response.statusCode == 200 && response.data['status'] == 'OK') {
-        return List<Map<String, dynamic>>.from(response.data['data']);
-      }
-
-      throw Exception('Failed to load translations');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // Get tafsir with caching
-  Future<Map<String, dynamic>> getTafsir(
-      int surahNumber, String edition) async {
-    // For now, we'll implement basic API call
-    // In a full implementation, you'd cache tafsir too
-    if (!await hasInternetConnection) {
-      throw Exception('No internet connection - tafsir not cached yet');
-    }
-
-    try {
-      final url = 'http://api.alquran.cloud/v1/surah/$surahNumber/$edition';
-
-      final response = await _dio.get(url);
-
-      if (response.statusCode == 200 && response.data['status'] == 'OK') {
-        return response.data['data'];
-      }
-
-      throw Exception('Failed to load tafsir');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // Clear all cache
-  Future<void> clearCache() async {
-    await _surahBox.clear();
-    await _prayerTimesBox.clear();
-    await _audioBox.clear();
-
-    // Also delete audio files
-    final directory = await getApplicationDocumentsDirectory();
-    final audioDir = Directory('${directory.path}/audio');
-    if (audioDir.existsSync()) {
-      audioDir.deleteSync(recursive: true);
-    }
-  }
-
-  // Get cache size info
-  Future<Map<String, dynamic>> getCacheInfo() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final audioDir = Directory('${directory.path}/audio');
-
-    int audioFiles = 0;
-    int audioSizeBytes = 0;
-
-    if (audioDir.existsSync()) {
-      final files = audioDir.listSync();
-      audioFiles = files.length;
-      for (var file in files) {
-        if (file is File) {
-          audioSizeBytes += await file.length();
+          bookmarkedVerses.add(bookmarkedVerse);
         }
       }
+
+      return Success(bookmarkedVerses);
+    } catch (e) {
+      return ResultError(
+          StorageFailure(message: 'Failed to get bookmarks: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> addBookmark(
+      int surahNumber, int verseNumber, String? note) async {
+    try {
+      // Check if already bookmarked
+      final isBookmarked = await isVerseBookmarked(surahNumber, verseNumber);
+      if (isBookmarked is Success<bool> && isBookmarked.data) {
+        return ResultError(const ValidationFailure(
+          message: 'Verse is already bookmarked',
+        ));
+      }
+
+      // Get verse details
+      final surahResult = await getSurah(surahNumber);
+      if (surahResult is ResultError<Surah>) {
+        return ResultError(surahResult.failure);
+      }
+
+      final surah = (surahResult as Success<Surah>).data;
+      final verse = surah.verses.firstWhere(
+        (v) => v.number == verseNumber,
+        orElse: () => throw Exception('Verse not found'),
+      );
+
+      // Create bookmark
+      final bookmark = Bookmark(
+        surahNumber: surahNumber,
+        surahName: surah.name,
+        ayahNumber: verseNumber,
+        text: verse.arabicText,
+        note: note,
+      );
+
+      // Store in Hive
+      final key = '${surahNumber}_$verseNumber';
+      await _bookmarkBox.put(key, bookmark);
+
+      return Success(null);
+    } catch (e) {
+      return ResultError(StorageFailure(message: 'Failed to add bookmark: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> removeBookmark(int surahNumber, int verseNumber) async {
+    try {
+      final key = '${surahNumber}_$verseNumber';
+      await _bookmarkBox.delete(key);
+      return Success(null);
+    } catch (e) {
+      return ResultError(
+          StorageFailure(message: 'Failed to remove bookmark: $e'));
+    }
+  }
+
+  @override
+  Future<Result<bool>> isVerseBookmarked(
+      int surahNumber, int verseNumber) async {
+    try {
+      final key = '${surahNumber}_$verseNumber';
+      final bookmark = _bookmarkBox.get(key);
+      return Success(bookmark != null);
+    } catch (e) {
+      return ResultError(
+          StorageFailure(message: 'Failed to check bookmark: $e'));
+    }
+  }
+
+  // ========================= READING PROGRESS OPERATIONS =========================
+
+  @override
+  Future<Result<ReadingProgress>> getReadingProgress() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<void>> updateLastRead(int surahNumber, int verseNumber) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<void>> markVerseAsRead(int surahNumber, int verseNumber) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<ReadingStatistics>> getReadingStatistics() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= CACHE OPERATIONS =========================
+
+  @override
+  Future<Result<void>> cacheSurah(int surahNumber,
+      {String? translationKey, String? reciterKey}) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<void>> removeCachedSurah(int surahNumber) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<bool>> isSurahCached(int surahNumber) async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<List<int>>> getCachedSurahs() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<void>> clearCache() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  @override
+  Future<Result<int>> getCacheSize() async {
+    return ResultError(const ServerFailure(message: 'Not implemented yet'));
+  }
+
+  // ========================= HELPER METHODS =========================
+
+  Surah _convertApiDataToSurah(Map<String, dynamic> data) {
+    final verses = <Verse>[];
+    if (data['ayahs'] != null) {
+      for (final ayahData in data['ayahs']) {
+        final verse = Verse(
+          number: ayahData['numberInSurah'] ?? 0,
+          arabicText: ayahData['text'] ?? '',
+        );
+        verses.add(verse);
+      }
     }
 
-    return {
-      'surahs_cached': _surahBox.length,
-      'prayer_times_cached': _prayerTimesBox.length,
-      'audio_files_cached': audioFiles,
-      'audio_cache_size_mb':
-          (audioSizeBytes / (1024 * 1024)).toStringAsFixed(2),
-      'total_cache_items':
-          _surahBox.length + _prayerTimesBox.length + audioFiles,
-    };
+    return Surah(
+      number: data['number'] ?? 0,
+      name: data['name'] ?? '',
+      englishName: data['englishName'] ?? '',
+      englishNameTranslation: data['englishNameTranslation'] ?? '',
+      revelationType: data['revelationType'] ?? '',
+      numberOfAyahs: data['numberOfAyahs'] ?? verses.length,
+      verses: verses,
+    );
   }
+
+  Surah _convertCachedSurahToEntity(CachedSurah cached) {
+    final verses = cached.ayahs
+        .map((ayah) => Verse(
+              number: ayah.numberInSurah,
+              arabicText: ayah.text,
+            ))
+        .toList();
+
+    return Surah(
+      number: cached.number,
+      name: cached.name,
+      englishName: cached.englishName,
+      englishNameTranslation: cached.englishName, // Use englishName as fallback
+      revelationType: cached.revelationType,
+      numberOfAyahs: cached.numberOfAyahs,
+      verses: verses,
+    );
+  }
+
+  CachedSurah _convertSurahToCached(Surah surah) {
+    return CachedSurah(
+      number: surah.number,
+      name: surah.name,
+      englishName: surah.englishName,
+      revelationType: surah.revelationType,
+      numberOfAyahs: surah.numberOfAyahs,
+      ayahs: surah.verses
+          .map((verse) => CachedAyah(
+                number: verse.number,
+                text: verse.arabicText,
+                numberInSurah: verse.number,
+              ))
+          .toList(),
+      cachedAt: DateTime.now(),
+    );
+  }
+}
+
+// Helper class for reading progress model
+class ReadingProgressModel extends ReadingProgress {
+  const ReadingProgressModel({
+    required int lastReadSurah,
+    required int lastReadVerse,
+    required DateTime lastReadTime,
+    required int totalVersesRead,
+    required int totalSurahsCompleted,
+    required double completionPercentage,
+  }) : super(
+          lastReadSurah: lastReadSurah,
+          lastReadVerse: lastReadVerse,
+          lastReadTime: lastReadTime,
+          totalVersesRead: totalVersesRead,
+          totalSurahsCompleted: totalSurahsCompleted,
+          completionPercentage: completionPercentage,
+        );
 }

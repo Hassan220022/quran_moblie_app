@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/utils/dependency_injection.dart';
+import 'core/utils/app_theme.dart';
+import 'core/utils/route_observer.dart';
+import 'data/models/cached_surah.dart';
+import 'data/models/bookmark.dart';
 import 'presentation/providers/preference_settings_provider.dart';
 import 'presentation/providers/reading_progress_provider.dart';
 import 'presentation/providers/enhanced_theme_provider.dart';
 import 'presentation/screens/main_screen.dart';
 import 'presentation/screens/onboarding_screen.dart';
-import 'presentation/providers/bookmarks_provider.dart';
+import 'presentation/providers/cache_provider.dart';
 import 'services/auto_cache_service.dart';
 import 'services/prayer_notification_service.dart';
 import 'services/accessibility_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive for local storage
+  await Hive.initFlutter();
+
+  // Register Hive adapters for cached models
+  Hive.registerAdapter(CachedSurahAdapter());
+  Hive.registerAdapter(CachedAyahAdapter());
+  Hive.registerAdapter(BookmarkAdapter());
+
+  // Initialize clean architecture dependencies
+  await DependencyInjection.init();
 
   // Initialize auto-preloading of popular surahs in background
   _initializeCache();
@@ -25,7 +46,9 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PreferenceSettingsProvider()),
-        ChangeNotifierProvider(create: (_) => BookmarksProvider()),
+        ChangeNotifierProvider.value(
+            value: DependencyInjection.bookmarksProvider),
+        ChangeNotifierProvider.value(value: DependencyInjection.surahProvider),
         ChangeNotifierProvider(create: (_) => ReadingProgressProvider()),
         ChangeNotifierProvider(create: (_) => EnhancedThemeProvider()),
       ],

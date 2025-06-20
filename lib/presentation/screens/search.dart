@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../../domain/entities/surah_entity.dart';
+import '../providers/surah_provider.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -15,35 +16,16 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   Surah? _searchedSurah;
   String? _errorMessage;
-  Map<String, int> _surahNameToNumber = {};
 
   @override
   void initState() {
     super.initState();
-    _fetchSurahNames();
-  }
-
-  Future<void> _fetchSurahNames() async {
-    final response =
-        await http.get(Uri.parse('http://api.alquran.cloud/v1/surah'));
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-
-      if (data['status'] == 'OK') {
-        List surahs = data['data'];
-        setState(() {
-          _surahNameToNumber = {
-            for (var surah in surahs)
-              surah['englishName'].toLowerCase(): surah['number']
-          };
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Failed to load Surah data.';
-        });
+    // Load all surahs for searching
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.read<SurahProvider>().surahs.isEmpty) {
+        context.read<SurahProvider>().loadAllSurahs();
       }
-    }
+    });
   }
 
   Future<void> _searchSurah(String query) async {
@@ -53,50 +35,49 @@ class _SearchScreenState extends State<SearchScreen> {
       _errorMessage = null;
     });
 
-    String apiUrl;
-
-    // Determine if the query is a number or name
-    if (int.tryParse(query) != null) {
-      apiUrl = 'http://api.alquran.cloud/v1/surah/$query/en.asad';
-    } else {
-      int? surahNumber = _surahNameToNumber[query.toLowerCase()];
-      if (surahNumber != null) {
-        apiUrl = 'http://api.alquran.cloud/v1/surah/$surahNumber/en.asad';
-      } else {
-        setState(() {
-          _errorMessage = 'Surah not found.';
-          _isLoading = false;
-        });
-        return;
-      }
-    }
-
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final surahProvider = context.read<SurahProvider>();
+      final allSurahs = surahProvider.surahs;
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
+      if (allSurahs.isEmpty) {
+        await surahProvider.loadAllSurahs();
+      }
 
-        if (data['status'] == 'OK') {
-          setState(() {
-            _searchedSurah = Surah.fromJson(data['data']);
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _errorMessage = 'Surah not found.';
-            _isLoading = false;
-          });
+      Surah? foundSurah;
+
+      // Try to parse as number first
+      final surahNumber = int.tryParse(query);
+      if (surahNumber != null) {
+        try {
+          foundSurah = allSurahs.firstWhere(
+            (surah) => surah.number == surahNumber,
+          );
+        } catch (e) {
+          foundSurah = null;
         }
       } else {
-        setState(() {
-          _errorMessage = 'Error fetching data. Please try again.';
-          _isLoading = false;
-        });
+        // Search by English name (case insensitive)
+        try {
+          foundSurah = allSurahs.firstWhere(
+            (surah) => surah.englishName.toLowerCase() == query.toLowerCase(),
+          );
+        } catch (e) {
+          foundSurah = null;
+        }
       }
+
+      setState(() {
+        if (foundSurah != null) {
+          _searchedSurah = foundSurah;
+        } else {
+          _errorMessage =
+              'Surah not found. Try searching by number (1-114) or English name.';
+        }
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'An error occurred. Please check your connection.';
+        _errorMessage = 'An error occurred while searching.';
         _isLoading = false;
       });
     }
@@ -181,7 +162,16 @@ class _SearchScreenState extends State<SearchScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _searchedSurah!.name,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF667eea),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
                                     Text(
                                       _searchedSurah!.englishNameTranslation,
                                       style: const TextStyle(
@@ -194,7 +184,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                       'Revelation Type: ${_searchedSurah!.revelationType}',
                                       style: const TextStyle(fontSize: 16),
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     Text(
                                       'Number of Ayahs: ${_searchedSurah!.numberOfAyahs}',
                                       style: const TextStyle(fontSize: 16),
@@ -215,32 +205,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class Surah {
-  final int number;
-  final String englishName;
-  final String englishNameTranslation;
-  final String revelationType;
-  final int numberOfAyahs;
-
-  Surah({
-    required this.number,
-    required this.englishName,
-    required this.englishNameTranslation,
-    required this.revelationType,
-    required this.numberOfAyahs,
-  });
-
-  factory Surah.fromJson(Map<String, dynamic> json) {
-    return Surah(
-      number: json['number'],
-      englishName: json['englishName'],
-      englishNameTranslation: json['englishNameTranslation'],
-      revelationType: json['revelationType'],
-      numberOfAyahs: json['numberOfAyahs'],
     );
   }
 }

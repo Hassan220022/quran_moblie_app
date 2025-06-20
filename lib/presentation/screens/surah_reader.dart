@@ -1,28 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:screen_brightness/screen_brightness.dart';
+import '../../domain/entities/surah_entity.dart';
 import '../providers/preference_settings_provider.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/reading_progress_provider.dart';
-import '../../data/models/bookmark.dart';
+import '../providers/surah_provider.dart';
+
 import '../../data/models/translation.dart';
 import '../../data/models/tafsir.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/quran_service.dart';
-
-class Ayah {
-  final int numberInSurah;
-  final String text;
-  Ayah({required this.numberInSurah, required this.text});
-  factory Ayah.fromJson(Map<String, dynamic> json) {
-    return Ayah(
-      numberInSurah: json['numberInSurah'],
-      text: json['text'],
-    );
-  }
-}
 
 class SurahReaderScreen extends StatefulWidget {
   final int surahNumber;
@@ -39,7 +27,7 @@ class SurahReaderScreen extends StatefulWidget {
 }
 
 class _SurahReaderScreenState extends State<SurahReaderScreen> {
-  List<Ayah> _ayahs = [];
+  List<Verse> _ayahs = [];
   TranslationSet? _translations;
   TafsirSet? _tafsir;
   bool _isLoading = true;
@@ -58,7 +46,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     _audioPlayerService = AudioPlayerService();
     _quranService = QuranService();
     _initializeBrightness();
-    fetchAyahs();
+    _loadSurah();
     _loadTranslations();
     _loadTafsir();
 
@@ -66,27 +54,29 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     _scrollController.addListener(_onScroll);
   }
 
-  Future<void> fetchAyahs() async {
-    final String apiUrl =
-        'http://api.alquran.cloud/v1/surah/${widget.surahNumber}/quran-uthmani';
+  Future<void> _loadSurah() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        List<Ayah> fetchedAyahs = [];
-        if (data['status'] == 'OK') {
-          final List<dynamic> ayahs = data['data']['ayahs'];
-          _totalAyahs = ayahs.length;
-          for (var ayah in ayahs) {
-            final ayahObj = Ayah.fromJson(ayah);
-            String normalizedAyahText = normalizeText(ayahObj.text);
-            if (!normalizedAyahText.contains('بِسْمِ ٱللَّهِ')) {
-              fetchedAyahs.add(ayahObj);
-            }
-          }
-        }
+      setState(() {
+        _isLoading = true;
+        _isError = false;
+      });
+
+      final surahProvider = context.read<SurahProvider>();
+
+      // Load the surah if not already loaded
+      if (surahProvider.getSurahByNumber(widget.surahNumber) == null) {
+        await surahProvider.loadSurah(widget.surahNumber);
+      }
+
+      final surah = surahProvider.getSurahByNumber(widget.surahNumber);
+
+      if (surah != null) {
         setState(() {
-          _ayahs = fetchedAyahs;
+          _ayahs = surah.verses.where((verse) {
+            String normalizedText = normalizeText(verse.arabicText);
+            return !normalizedText.contains('بِسْمِ ٱللَّهِ');
+          }).toList();
+          _totalAyahs = surah.numberOfAyahs;
           _isLoading = false;
         });
       } else {
@@ -142,7 +132,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     }
   }
 
-  void _showBookmarkDialog(Ayah ayah) {
+  void _showBookmarkDialog(Verse verse) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -157,14 +147,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
             ),
             TextButton(
               onPressed: () {
-                final bookmark = Bookmark(
-                  surahNumber: widget.surahNumber,
-                  surahName: widget.surahName,
-                  ayahNumber: ayah.numberInSurah,
-                  text: ayah.text,
-                );
-                Provider.of<BookmarksProvider>(context, listen: false)
-                    .addBookmark(bookmark);
+                context.read<BookmarksProvider>().addBookmark(
+                      surahNumber: widget.surahNumber,
+                      verseNumber: verse.number,
+                    );
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -767,18 +753,18 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   }
 
   Widget _buildAyahWidget(
-      Ayah ayah, int index, PreferenceSettingsProvider prefProvider) {
+      Verse verse, int index, PreferenceSettingsProvider prefProvider) {
     final isDarkTheme = prefProvider.isDarkTheme;
-    final isHighlighted = widget.highlightAyah != null &&
-        ayah.numberInSurah == widget.highlightAyah;
-    final isPlaying = _currentlyPlayingAyah == ayah.numberInSurah;
+    final isHighlighted =
+        widget.highlightAyah != null && verse.number == widget.highlightAyah;
+    final isPlaying = _currentlyPlayingAyah == verse.number;
 
     // Get translation for this ayah
     Translation? translation;
     if (_translations != null) {
       try {
         translation = _translations!.translations.firstWhere(
-          (t) => t.number == ayah.numberInSurah,
+          (t) => t.number == verse.number,
         );
       } catch (e) {
         // Translation not found
@@ -790,7 +776,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     if (_tafsir != null) {
       try {
         tafsir = _tafsir!.tafasir.firstWhere(
-          (t) => t.ayahNumber == ayah.numberInSurah,
+          (t) => t.ayahNumber == verse.number,
         );
       } catch (e) {
         // Tafsir not found
@@ -866,7 +852,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      ayah.numberInSurah.toString(),
+                      verse.number.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -904,7 +890,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                           if (isPlaying) {
                             _stopAudio();
                           } else {
-                            _playAudio(ayah.numberInSurah);
+                            _playAudio(verse.number);
                           }
                         },
                       ),
@@ -927,7 +913,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                               : const Color(0xFFFF9800),
                           size: 24,
                         ),
-                        onPressed: () => _showBookmarkDialog(ayah),
+                        onPressed: () => _showBookmarkDialog(verse),
                       ),
                     ),
                   ],
@@ -958,7 +944,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
             child: Column(
               children: [
                 Text(
-                  ayah.text,
+                  verse.arabicText,
                   style: TextStyle(
                     fontFamily: 'Roboto',
                     fontSize: prefProvider.arabicFontSize,
@@ -1380,9 +1366,9 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                             );
                           }
 
-                          final ayah = _ayahs[index - 1];
+                          final verse = _ayahs[index - 1];
                           return _buildAyahWidget(
-                              ayah, index - 1, prefProvider);
+                              verse, index - 1, prefProvider);
                         },
                       ),
                     ),
