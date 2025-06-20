@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/preference_settings_provider.dart';
 
 class Ayah {
   final int numberInSurah;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
-import '../services/qibla_service.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../../services/qibla_service.dart';
+import '../providers/preference_settings_provider.dart';
 
 class QiblaScreen extends StatefulWidget {
   const QiblaScreen({super.key});
@@ -16,7 +16,6 @@ class _QiblaScreenState extends State<QiblaScreen>
   late QiblaProvider _qiblaProvider;
   late AnimationController _compassController;
   late AnimationController _pulseController;
-  bool _showCalibrationDialog = false;
 
   @override
   void initState() {

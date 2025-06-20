@@ -31,8 +31,6 @@ class QuranRepository {
 
   // Get all Surahs with caching
   Future<List<Map<String, dynamic>>> getSurahs() async {
-    final cacheKey = 'all_surahs';
-
     // Check cache first
     final cached = _surahBox.values.toList();
     if (cached.isNotEmpty && !cached.first.isExpired) {
@@ -185,7 +183,6 @@ class QuranRepository {
   Future<Map<String, dynamic>> getPrayerTimes(double latitude, double longitude,
       {DateTime? date}) async {
     final targetDate = date ?? DateTime.now();
-    final dateKey = '${targetDate.year}-${targetDate.month}-${targetDate.day}';
 
     // Check cache first
     final cached = _prayerTimesBox.values

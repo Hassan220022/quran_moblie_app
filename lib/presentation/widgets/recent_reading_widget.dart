@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../utils/provider/reading_progress_provider.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/reading_progress_provider.dart';
+import '../providers/preference_settings_provider.dart';
 import '../screens/surah_reader.dart';
 
 class RecentReadingWidget extends StatelessWidget {

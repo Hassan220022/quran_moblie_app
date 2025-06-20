@@ -242,7 +242,6 @@ class CommunityService {
     int tempStreak = 1;
 
     final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
 
     // Check if read today or yesterday for current streak
     final lastReadDate = dates.last;
@@ -381,7 +380,6 @@ class CommunityService {
     final readingSessions = prefs.getStringList('reading_sessions') ?? [];
 
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final monthProgress = List.filled(daysInMonth, 0);
 

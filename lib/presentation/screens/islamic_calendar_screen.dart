@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../services/islamic_calendar_service.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/preference_settings_provider.dart';
 
 class IslamicCalendarScreen extends StatefulWidget {
   const IslamicCalendarScreen({super.key});
@@ -14,13 +13,11 @@ class IslamicCalendarScreen extends StatefulWidget {
 class _IslamicCalendarScreenState extends State<IslamicCalendarScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  late DateTime _selectedDate;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _selectedDate = DateTime.now();
   }
 
   @override

@@ -3,7 +3,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/cached_prayer_times.dart';
+import '../data/models/cached_prayer_times.dart';
 
 class PrayerNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =

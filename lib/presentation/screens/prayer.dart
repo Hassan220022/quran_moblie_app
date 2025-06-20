@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/preference_settings_provider.dart';
 import '../widgets/enhanced_loading.dart';
 
 class PrayerTimeService {

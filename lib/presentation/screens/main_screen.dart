@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/preference_settings_provider.dart';
+import '../providers/enhanced_theme_provider.dart';
 import 'bookmark.dart';
 import 'search.dart';
 import 'surah_list.dart';
@@ -10,9 +11,8 @@ import 'settings_screen.dart';
 import 'qibla_screen.dart';
 import 'islamic_calendar_screen.dart';
 import 'community_screen.dart';
-import 'notification_settings_screen.dart';
-import '../services/auto_cache_service.dart';
-import '../utils/route_observer/route_observer.dart';
+import '../../services/auto_cache_service.dart';
+import '../../core/utils/route_observer.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -30,6 +30,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const BookmarkScreen(),
     const SearchScreen(),
     const PrayerTimesWidget(),
+    const SettingsScreen(), // Add settings as 5th tab
   ];
 
   final List<String> _titles = [
@@ -37,6 +38,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     'Bookmarks',
     'Search',
     'Prayers',
+    'Settings',
   ];
 
   @override
@@ -68,90 +70,119 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    bool isDarkTheme =
-        Provider.of<PreferenceSettingsProvider>(context).isDarkTheme;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
-        elevation: 0,
-        title: Text(
-          _titles[_selectedIndex],
-          style: TextStyle(
-            color: isDarkTheme ? Colors.white : const Color(0xff682DBD),
-          ),
-        ),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0),
-          child: Image.asset(
-            isDarkTheme
-                ? 'assets/icon_quran_white.png'
-                : 'assets/icon_quran.png',
-            width: 28.0,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isDarkTheme ? Icons.light_mode : Icons.dark_mode,
-              color: isDarkTheme ? Colors.white : const Color(0xFF5E329D),
-            ),
-            onPressed: () {
-              Provider.of<PreferenceSettingsProvider>(context, listen: false)
-                  .enableDarkTheme(!isDarkTheme);
-            },
-          ),
-          Builder(
-            builder: (context) => IconButton(
-              icon: Icon(
-                Icons.menu,
-                color: isDarkTheme ? Colors.white : const Color(0xFF5E329D),
+    return Consumer2<PreferenceSettingsProvider, EnhancedThemeProvider>(
+      builder: (context, prefProvider, themeProvider, child) {
+        final isDarkTheme = themeProvider.isDarkTheme(context);
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              _titles[_selectedIndex],
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
               ),
-              onPressed: () {
-                Scaffold.of(context).openEndDrawer();
-              },
+            ),
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 16.0),
+              child: Image.asset(
+                isDarkTheme
+                    ? 'assets/icon_quran_white.png'
+                    : 'assets/icon_quran.png',
+                width: 28.0,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(
+                  isDarkTheme ? Icons.light_mode : Icons.dark_mode,
+                  color: colorScheme.onSurface,
+                ),
+                onPressed: () {
+                  final newMode =
+                      isDarkTheme ? ThemeMode.light : ThemeMode.dark;
+                  themeProvider.setThemeMode(newMode);
+                },
+              ),
+              if (_selectedIndex != 4) // Don't show menu when on settings
+                Builder(
+                  builder: (context) => IconButton(
+                    icon: Icon(
+                      Icons.menu,
+                      color: colorScheme.onSurface,
+                    ),
+                    onPressed: () {
+                      Scaffold.of(context).openEndDrawer();
+                    },
+                  ),
+                ),
+            ],
+          ),
+          body: _screens[_selectedIndex],
+          endDrawer: _selectedIndex != 4
+              ? _buildDrawer(context, isDarkTheme, colorScheme)
+              : null,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              selectedItemColor: colorScheme.primary,
+              unselectedItemColor: colorScheme.onSurfaceVariant,
+              backgroundColor: colorScheme.surface,
+              currentIndex: _selectedIndex,
+              type: BottomNavigationBarType.fixed,
+              elevation: 0,
+              selectedFontSize: 12,
+              unselectedFontSize: 12,
+              onTap: _onItemTapped,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.list),
+                  label: 'Surahs',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bookmark),
+                  label: 'Bookmarks',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.search),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.access_time),
+                  label: 'Prayers',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      body: _screens[_selectedIndex],
-      endDrawer: _buildDrawer(context, isDarkTheme),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: const Color(0xff682DBD),
-        unselectedItemColor: Colors.grey,
-        backgroundColor: isDarkTheme ? const Color(0x00091945) : Colors.white,
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Surahs',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark),
-            label: 'Bookmarks',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            label: 'Prayers',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildDrawer(BuildContext context, bool isDarkTheme) {
+  Widget _buildDrawer(
+      BuildContext context, bool isDarkTheme, ColorScheme colorScheme) {
     return Drawer(
-      backgroundColor: isDarkTheme ? const Color(0xFF091945) : Colors.white,
+      backgroundColor: colorScheme.surface,
       child: Column(
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
                 colors: [Color(0xFF667eea), Color(0xFF764ba2)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -181,19 +212,19 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ListTile(
             leading: Icon(
               Icons.explore,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              color: colorScheme.primary,
             ),
             title: Text(
               'Qibla Direction',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               'Find direction to Mecca',
               style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                color: colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -209,19 +240,19 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ListTile(
             leading: Icon(
               Icons.calendar_today,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              color: colorScheme.primary,
             ),
             title: Text(
               'Islamic Calendar',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               'Hijri dates & events',
               style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                color: colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -238,19 +269,19 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ListTile(
             leading: Icon(
               Icons.people,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              color: colorScheme.primary,
             ),
             title: Text(
               'Community',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               'Share & track progress',
               style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                color: colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -277,19 +308,19 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
               return ListTile(
                 leading: Icon(
                   Icons.storage,
-                  color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                  color: colorScheme.primary,
                 ),
                 title: Text(
                   'Cache & Offline',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
                   offlineStatus,
                   style: TextStyle(
-                    color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
@@ -326,62 +357,14 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           const Divider(),
           ListTile(
             leading: Icon(
-              Icons.notifications,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
-            ),
-            title: Text(
-              'Notifications',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
-              ),
-            ),
-            subtitle: Text(
-              'Prayer times & daily ayah',
-              style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const NotificationSettingsScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.settings,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
-            ),
-            title: Text(
-              'Settings',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: Icon(
               Icons.info_outline,
-              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              color: colorScheme.primary,
             ),
             title: Text(
               'About',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+                color: colorScheme.onSurface,
               ),
             ),
             onTap: () {
@@ -412,6 +395,8 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
             Text('• Prayer times'),
             Text('• Reading progress tracking'),
             Text('• Bookmarks'),
+            Text('• Accessibility features'),
+            Text('• Modern theming'),
             SizedBox(height: 8),
             Text('Built with Flutter and powered by Al-Quran Cloud API.'),
           ],

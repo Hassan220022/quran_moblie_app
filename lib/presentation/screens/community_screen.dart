@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/community_service.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../../services/community_service.dart';
+import '../providers/preference_settings_provider.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});

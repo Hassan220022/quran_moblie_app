@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'utils/provider/preference_settings_provider.dart';
-import 'utils/provider/reading_progress_provider.dart';
-import 'screens/main_screen.dart';
-import 'screens/onboarding_screen.dart';
-import 'utils/provider/bookmarks_provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'presentation/providers/preference_settings_provider.dart';
+import 'presentation/providers/reading_progress_provider.dart';
+import 'presentation/providers/enhanced_theme_provider.dart';
+import 'presentation/screens/main_screen.dart';
+import 'presentation/screens/onboarding_screen.dart';
+import 'presentation/providers/bookmarks_provider.dart';
 import 'services/auto_cache_service.dart';
 import 'services/prayer_notification_service.dart';
+import 'services/accessibility_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +27,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PreferenceSettingsProvider()),
         ChangeNotifierProvider(create: (_) => BookmarksProvider()),
         ChangeNotifierProvider(create: (_) => ReadingProgressProvider()),
+        ChangeNotifierProvider(create: (_) => EnhancedThemeProvider()),
       ],
       child: const MyApp(),
     ),
@@ -43,60 +47,62 @@ void _initializeServices() {
     try {
       await PrayerNotificationService.initialize();
       await PrayerNotificationService.scheduleDailyAyahNotification();
+
+      // Initialize accessibility service
+      await AccessibilityService().initialize();
     } catch (e) {
-      print('Failed to initialize notification services: $e');
+      // Failed to initialize services: $e
     }
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Load theme settings
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EnhancedThemeProvider>().loadSettings();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<PreferenceSettingsProvider>(
-      builder: (context, prefSetProvider, _) {
+    return Consumer<EnhancedThemeProvider>(
+      builder: (context, themeProvider, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Quran App',
-          theme: ThemeData(
-            primaryColor: const Color(0xFF091945),
-            scaffoldBackgroundColor: Colors.white,
-            fontFamily: 'Roboto',
-            textTheme: const TextTheme(
-              titleLarge: TextStyle(
-                fontSize: 20.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-              bodyMedium: TextStyle(
-                fontSize: 16.0,
-                color: Colors.black,
-              ),
-            ),
-            iconTheme: const IconThemeData(color: Colors.black),
-          ),
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            primaryColor: const Color(0xFF091945),
-            scaffoldBackgroundColor:
-                const Color(0xFF091945), // Updated to desired color
-            fontFamily: 'Roboto',
-            textTheme: const TextTheme(
-              titleLarge: TextStyle(
-                fontSize: 20.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-              bodyMedium: TextStyle(
-                fontSize: 16.0,
-                color: Colors.white,
-              ),
-            ),
-            iconTheme: const IconThemeData(color: Colors.white),
-          ),
-          themeMode:
-              prefSetProvider.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
+          title: 'Quran App - القرآن الكريم',
+
+          // Material 3 themes with enhanced customization
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.themeMode,
+
+          // Localization support
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''), // English
+            Locale('ar', ''), // Arabic
+            Locale('ur', ''), // Urdu
+            Locale('fr', ''), // French
+            Locale('id', ''), // Indonesian
+          ],
+
+          // Use system locale by default
+          locale: const Locale('en', ''),
+
           home: const AppInitializer(),
         );
       },

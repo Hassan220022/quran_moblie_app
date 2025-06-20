@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class IslamicCalendarService {
   /// Get current Hijri date (simplified - placeholder for when hijri package is available)
   static Map<String, dynamic> getCurrentHijriDate() {
@@ -140,7 +138,6 @@ class IslamicCalendarService {
   /// Check if currently in Ramadan (simplified)
   static bool isRamadan() {
     // Simple check - this would be more accurate with proper hijri calendar
-    final now = DateTime.now();
     final currentHijri = getCurrentHijriDate();
     return currentHijri['month'] == 9;
   }
@@ -156,7 +153,7 @@ class IslamicCalendarService {
   static int? getRamadanDaysRemaining() {
     if (!isRamadan()) return null;
     final currentHijri = getCurrentHijriDate();
-    final totalDays = 30; // Simplified
+    const totalDays = 30; // Simplified
     return totalDays - (currentHijri['day'] as int);
   }
 

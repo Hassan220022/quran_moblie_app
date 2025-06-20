@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../utils/provider/bookmarks_provider.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/bookmarks_provider.dart';
+import '../providers/preference_settings_provider.dart';
 import 'surah_reader.dart';
 
 class BookmarkScreen extends StatefulWidget {

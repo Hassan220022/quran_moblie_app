@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../screens/surah_reader.dart';
-import '../utils/provider/preference_settings_provider.dart';
+import '../providers/preference_settings_provider.dart';
 import '../widgets/recent_reading_widget.dart';
-import '../services/auto_cache_service.dart';
+import '../../services/auto_cache_service.dart';
 import '../widgets/enhanced_loading.dart';
 import 'package:provider/provider.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import '../../repositories/quran_repository.dart';
+import '../../data/repositories/quran_repository.dart';
 
 class CacheProvider extends ChangeNotifier {
   QuranRepository? _repository;

@@ -31,9 +31,7 @@ enum LoadingStyle {
 class _EnhancedLoadingState extends State<EnhancedLoading>
     with TickerProviderStateMixin {
   late AnimationController _primaryController;
-  late AnimationController _secondaryController;
   late Animation<double> _primaryAnimation;
-  late Animation<double> _secondaryAnimation;
 
   @override
   void initState() {
@@ -47,25 +45,12 @@ class _EnhancedLoadingState extends State<EnhancedLoading>
       vsync: this,
     )..repeat();
 
-    _secondaryController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat();
-
     _primaryAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _primaryController,
       curve: Curves.easeInOut,
-    ));
-
-    _secondaryAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _secondaryController,
-      curve: Curves.elasticOut,
     ));
   }
 
@@ -322,7 +307,6 @@ class _EnhancedLoadingState extends State<EnhancedLoading>
   @override
   void dispose() {
     _primaryController.dispose();
-    _secondaryController.dispose();
     super.dispose();
   }
 }

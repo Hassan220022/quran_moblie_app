@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/bookmark.dart';
+import '../../data/models/bookmark.dart';
 
 class BookmarksProvider with ChangeNotifier {
   final List<Bookmark> _bookmarks = [];

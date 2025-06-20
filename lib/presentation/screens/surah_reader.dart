@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:screen_brightness/screen_brightness.dart';
-import '../utils/provider/preference_settings_provider.dart';
-import '../utils/provider/bookmarks_provider.dart';
-import '../utils/provider/reading_progress_provider.dart';
-import '../models/bookmark.dart';
-import '../models/translation.dart';
-import '../models/tafsir.dart';
-import '../services/audio_player_service.dart';
-import '../services/quran_service.dart';
+import '../providers/preference_settings_provider.dart';
+import '../providers/bookmarks_provider.dart';
+import '../providers/reading_progress_provider.dart';
+import '../../data/models/bookmark.dart';
+import '../../data/models/translation.dart';
+import '../../data/models/tafsir.dart';
+import '../../services/audio_player_service.dart';
+import '../../services/quran_service.dart';
 
 class Ayah {
   final int numberInSurah;

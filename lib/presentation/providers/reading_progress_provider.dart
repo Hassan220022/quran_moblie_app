@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../../models/reading_progress.dart';
+import '../../data/models/reading_progress.dart';
 
 class ReadingProgressProvider with ChangeNotifier {
   Map<int, ReadingProgress> _readingProgress = {};
