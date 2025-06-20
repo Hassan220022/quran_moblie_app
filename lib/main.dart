@@ -7,12 +7,16 @@ import 'screens/main_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'utils/provider/bookmarks_provider.dart';
 import 'services/auto_cache_service.dart';
+import 'services/prayer_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize auto-preloading of popular surahs in background
   _initializeCache();
+
+  // Initialize prayer notification service
+  _initializeServices();
 
   runApp(
     MultiProvider(
@@ -30,6 +34,18 @@ void _initializeCache() {
   // Cache common surahs in background for permanent offline access
   Future.delayed(const Duration(seconds: 2), () {
     AutoCacheService.cacheCommonSurahs();
+  });
+}
+
+void _initializeServices() {
+  // Initialize prayer notifications and daily ayah
+  Future.delayed(const Duration(seconds: 3), () async {
+    try {
+      await PrayerNotificationService.initialize();
+      await PrayerNotificationService.scheduleDailyAyahNotification();
+    } catch (e) {
+      print('Failed to initialize notification services: $e');
+    }
   });
 }
 

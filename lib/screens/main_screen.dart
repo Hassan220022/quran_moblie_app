@@ -7,6 +7,10 @@ import 'surah_list.dart';
 import 'prayer.dart';
 import 'simple_cache_management.dart';
 import 'settings_screen.dart';
+import 'qibla_screen.dart';
+import 'islamic_calendar_screen.dart';
+import 'community_screen.dart';
+import 'notification_settings_screen.dart';
 import '../services/auto_cache_service.dart';
 import '../utils/route_observer/route_observer.dart';
 
@@ -172,6 +176,96 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
               ],
             ),
           ),
+
+          // New Features Section
+          ListTile(
+            leading: Icon(
+              Icons.explore,
+              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+            ),
+            title: Text(
+              'Qibla Direction',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              ),
+            ),
+            subtitle: Text(
+              'Find direction to Mecca',
+              style: TextStyle(
+                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 12,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const QiblaScreen()),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: Icon(
+              Icons.calendar_today,
+              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+            ),
+            title: Text(
+              'Islamic Calendar',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              ),
+            ),
+            subtitle: Text(
+              'Hijri dates & events',
+              style: TextStyle(
+                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 12,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const IslamicCalendarScreen()),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: Icon(
+              Icons.people,
+              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+            ),
+            title: Text(
+              'Community',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              ),
+            ),
+            subtitle: Text(
+              'Share & track progress',
+              style: TextStyle(
+                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 12,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const CommunityScreen()),
+              );
+            },
+          ),
+
+          const Divider(),
+
           FutureBuilder<Map<String, dynamic>>(
             future: AutoCacheService.getCacheInfo(),
             builder: (context, snapshot) {
@@ -230,6 +324,34 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
             },
           ),
           const Divider(),
+          ListTile(
+            leading: Icon(
+              Icons.notifications,
+              color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+            ),
+            title: Text(
+              'Notifications',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkTheme ? Colors.white : const Color(0xFF091945),
+              ),
+            ),
+            subtitle: Text(
+              'Prayer times & daily ayah',
+              style: TextStyle(
+                color: isDarkTheme ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 12,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const NotificationSettingsScreen()),
+              );
+            },
+          ),
           ListTile(
             leading: Icon(
               Icons.settings,
