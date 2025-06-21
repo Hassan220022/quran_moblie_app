@@ -307,18 +307,18 @@ class QuranRemoteDataSource {
 
   // ========================= VALIDATION HELPERS =========================
 
-  /// Validate API response structure
-  bool _isValidResponse(Map<String, dynamic> data) {
-    return data.containsKey('status') &&
-        data['status'] == 'OK' &&
-        data.containsKey('data');
-  }
+//   /// Validate API response structure
+//   bool _isValidResponse(Map<String, dynamic> data) {
+//     return data.containsKey('status') &&
+//         data['status'] == 'OK' &&
+//         data.containsKey('data');
+//   }
 
-  /// Extract error message from API response
-  String _extractErrorMessage(Map<String, dynamic> data) {
-    if (data.containsKey('message')) {
-      return data['message'];
-    }
-    return 'Unknown API error';
-  }
+//   /// Extract error message from API response
+//   String _extractErrorMessage(Map<String, dynamic> data) {
+//     if (data.containsKey('message')) {
+//       return data['message'];
+//     }
+//     return 'Unknown API error';
+//   }
 }

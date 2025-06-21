@@ -1,6 +1,9 @@
 /// Pure business entity representing Islamic prayer times
 /// Contains no dependencies on frameworks or external libraries
 class PrayerTimes {
+  /// Standard prayer time detection window in minutes
+  static const int defaultPrayerTimeWindowMinutes = 15;
+
   final DateTime fajr;
   final DateTime sunrise;
   final DateTime dhuhr;
@@ -73,13 +76,16 @@ class PrayerTimes {
     return nextPrayer.time.difference(now);
   }
 
-  /// Check if it's currently prayer time (within 5 minutes of prayer)
-  bool isCurrentlyPrayerTime([DateTime? currentTime]) {
+  /// Check if it's currently prayer time (within configurable minutes of prayer)
+  bool isCurrentlyPrayerTime([
+    DateTime? currentTime,
+    int windowMinutes = defaultPrayerTimeWindowMinutes,
+  ]) {
     final now = currentTime ?? DateTime.now();
 
     for (final prayer in allPrayers) {
       final difference = now.difference(prayer.time).abs();
-      if (difference.inMinutes <= 5) {
+      if (difference.inMinutes <= windowMinutes) {
         return true;
       }
     }
@@ -103,14 +109,16 @@ class PrayerTimes {
 
   @override
   int get hashCode {
-    return fajr.hashCode ^
-        sunrise.hashCode ^
-        dhuhr.hashCode ^
-        asr.hashCode ^
-        maghrib.hashCode ^
-        isha.hashCode ^
-        date.hashCode ^
-        location.hashCode;
+    return Object.hash(
+      fajr,
+      sunrise,
+      dhuhr,
+      asr,
+      maghrib,
+      isha,
+      date,
+      location,
+    );
   }
 
   @override
@@ -133,10 +141,13 @@ class Prayer {
   });
 
   /// Check if this prayer is currently active (within prayer window)
-  bool isActive([DateTime? currentTime]) {
+  bool isActive([
+    DateTime? currentTime,
+    int windowMinutes = PrayerTimes.defaultPrayerTimeWindowMinutes,
+  ]) {
     final now = currentTime ?? DateTime.now();
     final difference = now.difference(time).abs();
-    return difference.inMinutes <= 15; // 15 minutes window
+    return difference.inMinutes <= windowMinutes;
   }
 
   /// Get formatted time string
@@ -160,7 +171,7 @@ class Prayer {
   }
 
   @override
-  int get hashCode => name.hashCode ^ time.hashCode ^ type.hashCode;
+  int get hashCode => Object.hash(name, time, type);
 
   @override
   String toString() => 'Prayer{name: $name, time: $formattedTime, type: $type}';
@@ -250,11 +261,13 @@ class Location {
 
   @override
   int get hashCode {
-    return latitude.hashCode ^
-        longitude.hashCode ^
-        city.hashCode ^
-        country.hashCode ^
-        timezone.hashCode;
+    return Object.hash(
+      latitude,
+      longitude,
+      city,
+      country,
+      timezone,
+    );
   }
 
   @override

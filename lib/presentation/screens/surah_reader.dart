@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import '../../domain/entities/surah_entity.dart';
@@ -39,6 +40,8 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   double? _originalBrightness;
   final ScrollController _scrollController = ScrollController();
   int _totalAyahs = 0;
+  int _lastReportedAyah =
+      0; // Track last reported ayah to avoid excessive updates
 
   @override
   void initState() {
@@ -101,12 +104,14 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         });
 
         if (mounted && errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage)),
-          );
+          _showErrorSnackBar(errorMessage);
         }
       }
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error loading surah ${widget.surahNumber}: $e');
+      }
+
       if (!mounted) return;
 
       setState(() {
@@ -114,9 +119,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load surah')),
-      );
+      _showErrorSnackBar('Failed to load surah. Please check your connection.');
     }
   }
 
@@ -140,9 +143,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         _currentlyPlayingAyah = ayahNumber;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error playing audio')),
-      );
+      if (kDebugMode) {
+        debugPrint('Error playing audio for ayah $ayahNumber: $e');
+      }
+      _showErrorSnackBar('Unable to play audio. Please try again.');
     }
   }
 
@@ -153,44 +157,264 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         _currentlyPlayingAyah = null;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error stopping audio')),
-      );
+      if (kDebugMode) {
+        debugPrint('Error stopping audio: $e');
+      }
+      _showErrorSnackBar('Error stopping audio.');
     }
   }
 
   void _showBookmarkDialog(Verse verse) {
-    showDialog(
+    final noteController = TextEditingController();
+
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add to Bookmarks'),
-          content:
-              const Text('Do you want to add this Ayah to your bookmarks?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                context.read<BookmarksProvider>().addBookmark(
-                      surahNumber: widget.surahNumber,
-                      verseNumber: verse.number,
-                    );
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Ayah added to bookmarks'),
-                    duration: Duration(seconds: 2),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                );
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Header with icon
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.bookmark_add,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Bookmark',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        Text(
+                          'Save this verse for later',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Verse preview card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${widget.surahName} ${verse.number}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      verse.arabicText,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontFamily: 'Quran',
+                            fontSize: 18,
+                            height: 1.8,
+                          ),
+                      textAlign: TextAlign.right,
+                      textDirection: TextDirection.rtl,
+                    ),
+                    if (verse.translation != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        verse.translation!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Note input
+              TextField(
+                controller: noteController,
+                decoration: InputDecoration(
+                  labelText: 'Add a personal note (optional)',
+                  hintText: 'Why is this verse meaningful to you?',
+                  prefixIcon: const Icon(Icons.note_add),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                ),
+                maxLines: 3,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 24),
+
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: () async {
+                        final success =
+                            await context.read<BookmarksProvider>().addBookmark(
+                                  surahNumber: widget.surahNumber,
+                                  verseNumber: verse.number,
+                                  note: noteController.text.trim().isEmpty
+                                      ? null
+                                      : noteController.text.trim(),
+                                );
+
+                        if (mounted) {
+                          Navigator.pop(context);
+                          _showSuccessSnackBar(
+                            success
+                                ? 'Bookmark saved successfully!'
+                                : 'Failed to save bookmark',
+                            isSuccess: success,
+                          );
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: const Color(0xFF6366F1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.bookmark_add, size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Save Bookmark'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -198,20 +422,61 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     try {
       _originalBrightness = await ScreenBrightness().current;
     } catch (e) {
-      print('Failed to get current brightness: $e');
+      if (kDebugMode) {
+        debugPrint('Failed to get current brightness: $e');
+      }
+      // Fallback to default brightness if unable to get current
+      _originalBrightness = 0.5;
     }
   }
 
   void _onScroll() {
+    if (!mounted || _ayahs.isEmpty) return;
+
     final progressProvider =
         Provider.of<ReadingProgressProvider>(context, listen: false);
 
-    // Calculate current visible ayah based on scroll position
+    // Get the current scroll position
     final scrollOffset = _scrollController.offset;
-    const itemHeight = 120.0; // Approximate height per ayah
-    final currentAyah = (scrollOffset / itemHeight).round() + 1;
+    final viewportHeight = _scrollController.position.viewportDimension;
+    final totalScrollableHeight = _scrollController.position.maxScrollExtent;
 
-    if (currentAyah <= _totalAyahs && currentAyah > 0) {
+    // Calculate which verse is currently in the middle of the viewport
+    // This gives us a more accurate representation of reading progress
+    final middleOfViewport = scrollOffset + (viewportHeight / 2);
+
+    // Calculate progress as percentage of scroll completion
+    double scrollProgress = 0.0;
+    if (totalScrollableHeight > 0) {
+      scrollProgress = (scrollOffset / totalScrollableHeight).clamp(0.0, 1.0);
+    }
+
+    // If user has scrolled to the very bottom, mark as completed
+    if (scrollOffset >= totalScrollableHeight - 10) {
+      // 10px threshold for bottom detection
+      // Mark as fully completed - this will trigger auto-removal in the provider
+      if (_lastReportedAyah != _totalAyahs) {
+        _lastReportedAyah = _totalAyahs;
+        progressProvider.updateProgress(
+          widget.surahNumber,
+          widget.surahName,
+          _totalAyahs, // Set to total ayahs to indicate completion
+          _totalAyahs,
+        );
+      }
+      return;
+    }
+
+    // Convert scroll progress to ayah number
+    // Add 1 because we want to show that we're reading verse X, not that we've completed X-1 verses
+    final currentAyah =
+        ((scrollProgress * _totalAyahs) + 1).round().clamp(1, _totalAyahs);
+
+    // Only update if the ayah has changed and is valid
+    if (currentAyah > 0 &&
+        currentAyah <= _totalAyahs &&
+        currentAyah != _lastReportedAyah) {
+      _lastReportedAyah = currentAyah;
       progressProvider.updateProgress(
         widget.surahNumber,
         widget.surahName,
@@ -231,30 +496,115 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         widget.surahNumber,
         [prefProvider.selectedTranslation],
       );
-      setState(() {
-        _translations = translations;
-      });
+      if (mounted) {
+        setState(() {
+          _translations = translations;
+        });
+      }
     } catch (e) {
-      print('Error loading translations: $e');
+      if (kDebugMode) {
+        debugPrint(
+            'Error loading translations for surah ${widget.surahNumber}: $e');
+      }
+      // Don't show error to user as translations are optional
+      // The UI will gracefully handle missing translations
     }
   }
 
   Future<void> _loadTafsir() async {
     final prefProvider =
         Provider.of<PreferenceSettingsProvider>(context, listen: false);
-    if (!prefProvider.showTafsir) return;
+    if (!prefProvider.showTafsir) {
+      // Clear tafsir when disabled
+      if (mounted) {
+        setState(() {
+          _tafsir = null;
+        });
+      }
+      return;
+    }
 
     try {
+      if (kDebugMode) {
+        debugPrint(
+            '📖 Loading tafsir for surah ${widget.surahNumber} with edition: ${prefProvider.selectedTafsir}');
+      }
+
       final tafsir = await _quranService.getTafsir(
         widget.surahNumber,
         prefProvider.selectedTafsir,
       );
-      setState(() {
-        _tafsir = tafsir;
-      });
+
+      if (mounted) {
+        setState(() {
+          _tafsir = tafsir;
+        });
+
+        if (kDebugMode) {
+          debugPrint('✅ Tafsir loaded: ${tafsir.tafasir.length} entries');
+        }
+      }
     } catch (e) {
-      print('Error loading tafsir: $e');
+      if (kDebugMode) {
+        debugPrint(
+            '❌ Error loading tafsir for surah ${widget.surahNumber}: $e');
+      }
+
+      // Set empty tafsir to show "not available" message
+      if (mounted) {
+        setState(() {
+          _tafsir = TafsirSet(
+            tafasir: [],
+            surahName: widget.surahName,
+            surahNumber: widget.surahNumber,
+          );
+        });
+      }
     }
+  }
+
+  /// Helper method to show error messages to users
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Helper method to show success messages to users
+  void _showSuccessSnackBar(String message, {bool isSuccess = true}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.error,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Widget _buildBeautifulSelector({
@@ -1083,7 +1433,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
             ),
 
           // Tafsir with Beautiful Styling
-          if (prefProvider.showTafsir && tafsir != null)
+          if (prefProvider.showTafsir)
             Container(
               margin:
                   const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
@@ -1145,17 +1495,59 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    tafsir.text,
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      height: 1.5,
-                      color: isDarkTheme
-                          ? Colors.white70
-                          : const Color(0xFF424242),
-                      fontWeight: FontWeight.w400,
+                  // Show tafsir text if available, otherwise show helpful message
+                  if (tafsir != null && tafsir.text.isNotEmpty)
+                    Text(
+                      tafsir.text,
+                      style: TextStyle(
+                        fontSize: 14.0,
+                        height: 1.5,
+                        color: isDarkTheme
+                            ? Colors.white70
+                            : const Color(0xFF424242),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: isDarkTheme
+                                  ? Colors.white60
+                                  : const Color(0xFF666666),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Commentary not available',
+                              style: TextStyle(
+                                fontSize: 13.0,
+                                fontWeight: FontWeight.w500,
+                                color: isDarkTheme
+                                    ? Colors.white60
+                                    : const Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tafsir for this verse is not available in the selected commentary. Try switching to a different tafsir source in settings.',
+                          style: TextStyle(
+                            fontSize: 12.0,
+                            height: 1.4,
+                            color: isDarkTheme
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : const Color(0xFF888888),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
                 ],
               ),
             ),

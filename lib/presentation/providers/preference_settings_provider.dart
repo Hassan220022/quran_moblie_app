@@ -112,8 +112,9 @@ class PreferenceSettingsProvider with ChangeNotifier {
   // Available Tafsir
   static const Map<String, String> availableTafsir = {
     'en.jalalayn': 'Tafsir al-Jalalayn (English)',
-    'en.kathir': 'Tafsir Ibn Kathir (English)',
-    'ar.tabari': 'Tafsir al-Tabari (Arabic)',
-    'ar.qurtubi': 'Tafsir al-Qurtubi (Arabic)',
+    'ar.jalalayn': 'تفسير الجلالين (Arabic)',
+    'en.maarifulquran': 'Maarif-ul-Quran (English)',
+    'ar.muyassar': 'التفسير الميسر (Arabic)',
+    'en.wahiduddin': 'Wahiduddin Khan (English)',
   };
 }

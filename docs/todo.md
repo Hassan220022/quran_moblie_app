@@ -1,0 +1,1 @@
+- a new screen that will be added to the bottom nav that is an ai sensored model 4.1 mini that will only answer the questions based on the info of quaran tafsir and sona and anything related to islam and only that no hilosination and if he didn't found anything related to the questioned asked he should only answer with I don't know and send him to egyption ifta 

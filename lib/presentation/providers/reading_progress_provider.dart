@@ -14,6 +14,17 @@ class ReadingProgressProvider with ChangeNotifier {
 
   Future<void> updateProgress(
       int surahNumber, String surahName, int ayahNumber, int totalAyahs) async {
+    // Calculate progress percentage
+    final progressPercentage = (ayahNumber / totalAyahs) * 100;
+
+    // If progress is 100% or more, remove the progress entry instead of updating it
+    if (progressPercentage >= 100.0) {
+      _readingProgress.remove(surahNumber);
+      await _saveProgress();
+      notifyListeners();
+      return;
+    }
+
     _readingProgress[surahNumber] = ReadingProgress(
       surahNumber: surahNumber,
       surahName: surahName,

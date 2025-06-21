@@ -62,12 +62,14 @@ class UserPreferences {
 
   @override
   int get hashCode {
-    return theme.hashCode ^
-        reading.hashCode ^
-        accessibility.hashCode ^
-        notifications.hashCode ^
-        audio.hashCode ^
-        location.hashCode;
+    return Object.hash(
+      theme,
+      reading,
+      accessibility,
+      notifications,
+      audio,
+      location,
+    );
   }
 }
 
@@ -128,11 +130,13 @@ class ThemeSettings {
 
   @override
   int get hashCode {
-    return mode.hashCode ^
-        style.hashCode ^
-        isDynamicColorEnabled.hashCode ^
-        isHighContrastEnabled.hashCode ^
-        fontScale.hashCode;
+    return Object.hash(
+      mode,
+      style,
+      isDynamicColorEnabled,
+      isHighContrastEnabled,
+      fontScale,
+    );
   }
 }
 
@@ -209,14 +213,16 @@ class ReadingSettings {
 
   @override
   int get hashCode {
-    return arabicFont.hashCode ^
-        arabicFontSize.hashCode ^
-        translationFontSize.hashCode ^
-        preferredTranslation.hashCode ^
-        preferredTafsir.hashCode ^
-        showTranslation.hashCode ^
-        showTafsir.hashCode ^
-        nightReadingMode.hashCode;
+    return Object.hash(
+      arabicFont,
+      arabicFontSize,
+      translationFontSize,
+      preferredTranslation,
+      preferredTafsir,
+      showTranslation,
+      showTafsir,
+      nightReadingMode,
+    );
   }
 }
 
@@ -301,15 +307,17 @@ class AccessibilitySettings {
 
   @override
   int get hashCode {
-    return isTtsEnabled.hashCode ^
-        ttsSpeed.hashCode ^
-        ttsPitch.hashCode ^
-        ttsVolume.hashCode ^
-        ttsLanguage.hashCode ^
-        autoReadEnabled.hashCode ^
-        hapticFeedbackEnabled.hashCode ^
-        reduceAnimations.hashCode ^
-        screenReaderOptimized.hashCode;
+    return Object.hash(
+      isTtsEnabled,
+      ttsSpeed,
+      ttsPitch,
+      ttsVolume,
+      ttsLanguage,
+      autoReadEnabled,
+      hapticFeedbackEnabled,
+      reduceAnimations,
+      screenReaderOptimized,
+    );
   }
 }
 
@@ -370,11 +378,13 @@ class NotificationSettings {
 
   @override
   int get hashCode {
-    return prayerNotificationsEnabled.hashCode ^
-        dailyAyahEnabled.hashCode ^
-        prayerReminderMinutes.hashCode ^
-        soundEnabled.hashCode ^
-        vibrationEnabled.hashCode;
+    return Object.hash(
+      prayerNotificationsEnabled,
+      dailyAyahEnabled,
+      prayerReminderMinutes,
+      soundEnabled,
+      vibrationEnabled,
+    );
   }
 }
 
@@ -433,11 +443,13 @@ class AudioSettings {
 
   @override
   int get hashCode {
-    return selectedReciter.hashCode ^
-        volume.hashCode ^
-        playbackSpeed.hashCode ^
-        autoPlayNext.hashCode ^
-        downloadHighQuality.hashCode;
+    return Object.hash(
+      selectedReciter,
+      volume,
+      playbackSpeed,
+      autoPlayNext,
+      downloadHighQuality,
+    );
   }
 }
 
@@ -498,12 +510,14 @@ class LocationSettings {
 
   @override
   int get hashCode {
-    return autoDetectLocation.hashCode ^
-        latitude.hashCode ^
-        longitude.hashCode ^
-        manualCity.hashCode ^
-        manualCountry.hashCode ^
-        calculationMethod.hashCode;
+    return Object.hash(
+      autoDetectLocation,
+      latitude,
+      longitude,
+      manualCity,
+      manualCountry,
+      calculationMethod,
+    );
   }
 }
 

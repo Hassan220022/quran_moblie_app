@@ -573,24 +573,33 @@ class _AccessibilitySettingsScreenState
         Expanded(
           child: ElevatedButton.icon(
             onPressed: themeProvider.applyIslamicPreset,
-            icon: const Icon(Icons.mosque),
-            label: const Text('Islamic'),
+            icon: const Icon(Icons.mosque, size: 16),
+            label: const Text('Islamic', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
           ),
         ),
-        const SizedBox(width: AppTheme.spacingM),
+        const SizedBox(width: 8),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: themeProvider.applyModernPreset,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Modern'),
+            icon: const Icon(Icons.auto_awesome, size: 16),
+            label: const Text('Modern', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
           ),
         ),
-        const SizedBox(width: AppTheme.spacingM),
+        const SizedBox(width: 8),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: themeProvider.applyElegantPreset,
-            icon: const Icon(Icons.diamond),
-            label: const Text('Elegant'),
+            icon: const Icon(Icons.diamond, size: 16),
+            label: const Text('Elegant', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
           ),
         ),
       ],

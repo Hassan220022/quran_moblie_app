@@ -166,6 +166,9 @@ abstract class QuranRepositoryInterface {
 
   /// Get cache size in bytes
   Future<Result<int>> getCacheSize();
+
+  /// Dispose resources and clean up
+  Future<void> dispose();
 }
 
 // ========================= SUPPORTING CLASSES =========================

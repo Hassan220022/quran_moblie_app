@@ -4,6 +4,7 @@ import '../data/models/translation.dart';
 import '../data/models/tafsir.dart';
 import '../domain/repositories/quran_repository_interface.dart';
 import '../domain/entities/surah_entity.dart';
+import 'package:flutter/foundation.dart';
 
 class QuranService {
   static const String baseUrl = 'http://api.alquran.cloud/v1';
@@ -54,6 +55,11 @@ class QuranService {
 
   Future<TafsirSet> getTafsir(int surahNumber, String edition) async {
     try {
+      if (kDebugMode) {
+        debugPrint(
+            '🔍 Loading tafsir for surah $surahNumber with edition: $edition');
+      }
+
       final url = '$baseUrl/surah/$surahNumber/$edition';
 
       final response = await http.get(Uri.parse(url));
@@ -61,30 +67,63 @@ class QuranService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['status'] == 'OK') {
+        if (data['status'] == 'OK' && data['data'] != null) {
           List<Tafsir> tafasir = [];
 
           if (data['data']['ayahs'] != null) {
             for (var ayah in data['data']['ayahs']) {
-              tafasir.add(Tafsir.fromJson({
-                'ayahNumber': ayah['numberInSurah'],
-                'text': ayah['text'],
-                'edition': data['data']['edition']
-              }));
+              // Only add tafsir if the text is meaningful and different from Quran
+              String ayahText = ayah['text']?.toString() ?? '';
+
+              // Skip if the text is empty or just numbers/symbols
+              if (ayahText.isNotEmpty && ayahText.length > 10) {
+                tafasir.add(Tafsir.fromJson({
+                  'ayahNumber': ayah['numberInSurah'],
+                  'text': ayahText,
+                  'edition': data['data']['edition']
+                }));
+              }
             }
+          }
+
+          if (kDebugMode) {
+            debugPrint(
+                '✅ Loaded ${tafasir.length} tafsir entries for surah $surahNumber');
           }
 
           return TafsirSet(
             tafasir: tafasir,
-            surahName: data['data']['englishName'] ?? '',
+            surahName: data['data']['englishName'] ?? 'Surah $surahNumber',
             surahNumber: surahNumber,
           );
+        } else {
+          if (kDebugMode) {
+            debugPrint('⚠️ API returned OK but no valid data for tafsir');
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('❌ HTTP ${response.statusCode} for tafsir request');
         }
       }
 
-      throw Exception('Failed to load tafsir');
+      // Return empty tafsir set instead of throwing error
+      return TafsirSet(
+        tafasir: [],
+        surahName: 'Surah $surahNumber',
+        surahNumber: surahNumber,
+      );
     } catch (e) {
-      throw Exception('Error fetching tafsir: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Error fetching tafsir: $e');
+      }
+
+      // Return empty tafsir set to prevent UI crash
+      return TafsirSet(
+        tafasir: [],
+        surahName: 'Surah $surahNumber',
+        surahNumber: surahNumber,
+      );
     }
   }
 

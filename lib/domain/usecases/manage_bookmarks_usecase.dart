@@ -32,12 +32,6 @@ class ManageBookmarksUseCase {
       );
     }
 
-    // Check if verse exists first
-    final verseResult = await repository.getVerse(surahNumber, verseNumber);
-    if (verseResult is ResultError<Verse>) {
-      return ResultError(verseResult.failure);
-    }
-
     // Check if already bookmarked
     final isBookmarkedResult = await repository.isVerseBookmarked(
       surahNumber,
@@ -52,7 +46,7 @@ class ManageBookmarksUseCase {
       );
     }
 
-    // Add bookmark
+    // Add bookmark - the repository will handle verse lookup and validation
     return await repository.addBookmark(surahNumber, verseNumber, note);
   }
 
@@ -317,4 +311,3 @@ class BookmarkStatistics {
         'mostBookmarkedSurah: $mostBookmarkedSurah}';
   }
 }
- 

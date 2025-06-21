@@ -1,7 +1,7 @@
 import 'package:hive/hive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+// import 'package:path_provider/path_provider.dart';
+// import 'dart:io';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/surah_entity.dart';
 import '../../domain/repositories/quran_repository_interface.dart';
@@ -9,6 +9,7 @@ import '../datasources/quran_remote_datasource.dart';
 import '../models/cached_surah.dart';
 import '../models/bookmark.dart';
 import '../models/reading_progress.dart' as data_models;
+import 'package:flutter/foundation.dart';
 
 /// Implementation of QuranRepositoryInterface following clean architecture
 /// Handles data persistence, caching, and coordination between local and remote sources
@@ -272,32 +273,50 @@ class QuranRepository implements QuranRepositoryInterface {
   Future<Result<void>> addBookmark(
       int surahNumber, int verseNumber, String? note) async {
     try {
-      // Check if already bookmarked
+      if (kDebugMode) {
+        debugPrint(
+            '🔖 Attempting to add bookmark: Surah $surahNumber, Verse $verseNumber');
+      }
+
+      // Check if already bookmarked first
       final isBookmarked = await isVerseBookmarked(surahNumber, verseNumber);
       if (isBookmarked is Success<bool> && isBookmarked.data) {
+        if (kDebugMode) {
+          debugPrint(
+              '⚠️ Bookmark already exists for Surah $surahNumber, Verse $verseNumber');
+        }
         return ResultError(const ValidationFailure(
           message: 'Verse is already bookmarked',
         ));
       }
 
-      // Get verse details
-      final surahResult = await getSurah(surahNumber);
-      if (surahResult is ResultError<Surah>) {
-        return ResultError(surahResult.failure);
+      // Try to get surah name from cache first
+      String surahName = 'Surah $surahNumber';
+      String verseText = 'Verse $verseNumber';
+
+      final cached = _surahBox.get(surahNumber);
+      if (cached != null) {
+        surahName = cached.name;
+        // Try to find the verse text in cached data
+        try {
+          final cachedVerse = cached.ayahs.firstWhere(
+            (ayah) => ayah.numberInSurah == verseNumber,
+          );
+          verseText = cachedVerse.text;
+        } catch (e) {
+          // Verse not found in cache, use fallback
+          if (kDebugMode) {
+            debugPrint('📝 Using fallback text for verse $verseNumber');
+          }
+        }
       }
 
-      final surah = (surahResult as Success<Surah>).data;
-      final verse = surah.verses.firstWhere(
-        (v) => v.number == verseNumber,
-        orElse: () => throw Exception('Verse not found'),
-      );
-
-      // Create bookmark
+      // Create bookmark with available data
       final bookmark = Bookmark(
         surahNumber: surahNumber,
-        surahName: surah.name,
+        surahName: surahName,
         ayahNumber: verseNumber,
-        text: verse.arabicText,
+        text: verseText,
         note: note,
       );
 
@@ -305,9 +324,18 @@ class QuranRepository implements QuranRepositoryInterface {
       final key = '${surahNumber}_$verseNumber';
       await _bookmarkBox.put(key, bookmark);
 
+      if (kDebugMode) {
+        debugPrint('✅ Bookmark saved successfully: $key');
+      }
+
       return Success(null);
     } catch (e) {
-      return ResultError(StorageFailure(message: 'Failed to add bookmark: $e'));
+      if (kDebugMode) {
+        debugPrint('❌ Failed to add bookmark: $e');
+      }
+      return ResultError(StorageFailure(
+        message: 'Failed to save bookmark: $e',
+      ));
     }
   }
 
@@ -458,6 +486,17 @@ class QuranRepository implements QuranRepositoryInterface {
           .toList(),
       cachedAt: DateTime.now(),
     );
+  }
+
+  @override
+  Future<void> dispose() async {
+    try {
+      await _surahBox.close();
+      await _bookmarkBox.close();
+      await _progressBox.close();
+    } catch (e) {
+      // Log error but don't throw to avoid issues during cleanup
+    }
   }
 }
 

@@ -3,15 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/preference_settings_provider.dart';
 import '../providers/enhanced_theme_provider.dart';
 import 'bookmark.dart';
-import 'search.dart';
 import 'surah_list.dart';
 import 'prayer.dart';
-import 'simple_cache_management.dart';
 import 'settings_screen.dart';
-import 'qibla_screen.dart';
-import 'islamic_calendar_screen.dart';
-import 'community_screen.dart';
-import '../../services/auto_cache_service.dart';
 import '../../core/utils/route_observer.dart';
 
 class MainScreen extends StatefulWidget {
@@ -28,15 +22,13 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
   final List<Widget> _screens = [
     const SurahListScreen(),
     const BookmarkScreen(),
-    const SearchScreen(),
     const PrayerTimesWidget(),
-    const SettingsScreen(), // Add settings as 5th tab
+    const SettingsScreen(),
   ];
 
   final List<String> _titles = [
-    'Surahs',
+    'Holy Quran',
     'Bookmarks',
-    'Search',
     'Prayers',
     'Settings',
   ];
@@ -107,24 +99,9 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
                   themeProvider.setThemeMode(newMode);
                 },
               ),
-              if (_selectedIndex != 4) // Don't show menu when on settings
-                Builder(
-                  builder: (context) => IconButton(
-                    icon: Icon(
-                      Icons.menu,
-                      color: colorScheme.onSurface,
-                    ),
-                    onPressed: () {
-                      Scaffold.of(context).openEndDrawer();
-                    },
-                  ),
-                ),
             ],
           ),
           body: _screens[_selectedIndex],
-          endDrawer: _selectedIndex != 4
-              ? _buildDrawer(context, isDarkTheme, colorScheme)
-              : null,
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               boxShadow: [
@@ -147,23 +124,19 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
               onTap: _onItemTapped,
               items: const [
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.list),
-                  label: 'Surahs',
+                  icon: Icon(Icons.menu_book_rounded),
+                  label: 'Quran',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.bookmark),
+                  icon: Icon(Icons.bookmark_rounded),
                   label: 'Bookmarks',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.access_time),
+                  icon: Icon(Icons.access_time_rounded),
                   label: 'Prayers',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.settings),
+                  icon: Icon(Icons.settings_rounded),
                   label: 'Settings',
                 ),
               ],
@@ -171,243 +144,6 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildDrawer(
-      BuildContext context, bool isDarkTheme, ColorScheme colorScheme) {
-    return Drawer(
-      backgroundColor: colorScheme.surface,
-      child: Column(
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.menu_book,
-                  color: Colors.white,
-                  size: 40,
-                ),
-                SizedBox(width: 16),
-                Text(
-                  'Quran App',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // New Features Section
-          ListTile(
-            leading: Icon(
-              Icons.explore,
-              color: colorScheme.primary,
-            ),
-            title: Text(
-              'Qibla Direction',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              'Find direction to Mecca',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const QiblaScreen()),
-              );
-            },
-          ),
-
-          ListTile(
-            leading: Icon(
-              Icons.calendar_today,
-              color: colorScheme.primary,
-            ),
-            title: Text(
-              'Islamic Calendar',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              'Hijri dates & events',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const IslamicCalendarScreen()),
-              );
-            },
-          ),
-
-          ListTile(
-            leading: Icon(
-              Icons.people,
-              color: colorScheme.primary,
-            ),
-            title: Text(
-              'Community',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              'Share & track progress',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const CommunityScreen()),
-              );
-            },
-          ),
-
-          const Divider(),
-
-          FutureBuilder<Map<String, dynamic>>(
-            future: AutoCacheService.getCacheInfo(),
-            builder: (context, snapshot) {
-              final cacheInfo = snapshot.data ?? {};
-              final cachedSurahs = cacheInfo['cached_surahs'] ?? 0;
-              final offlineStatus =
-                  cacheInfo['offline_status'] ?? 'No offline content';
-
-              return ListTile(
-                leading: Icon(
-                  Icons.storage,
-                  color: colorScheme.primary,
-                ),
-                title: Text(
-                  'Cache & Offline',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  offlineStatus,
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-                trailing: cachedSurahs > 0
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$cachedSurahs',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )
-                    : null,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            const SimpleCacheManagementScreen()),
-                  );
-                },
-              );
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: Icon(
-              Icons.info_outline,
-              color: colorScheme.primary,
-            ),
-            title: Text(
-              'About',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              _showAboutDialog(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('About Quran App'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('A beautiful and comprehensive Quran reading app with:'),
-            SizedBox(height: 8),
-            Text('• Offline reading capabilities'),
-            Text('• Audio recitations'),
-            Text('• Multiple translations'),
-            Text('• Tafsir (commentary)'),
-            Text('• Prayer times'),
-            Text('• Reading progress tracking'),
-            Text('• Bookmarks'),
-            Text('• Accessibility features'),
-            Text('• Modern theming'),
-            SizedBox(height: 8),
-            Text('Built with Flutter and powered by Al-Quran Cloud API.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
     );
   }
 }
