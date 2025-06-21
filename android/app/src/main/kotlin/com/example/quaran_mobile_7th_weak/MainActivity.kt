@@ -1,4 +1,4 @@
-package com.example.quaran_mobile_7th_weak
+package com.mikawi.Salam
 
 import io.flutter.embedding.android.FlutterActivity
 

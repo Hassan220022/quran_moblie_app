@@ -1,11 +1,11 @@
 {
-    "name": "quaran_mobile_7th_weak",
-    "short_name": "quaran_mobile_7th_weak",
+    "name": "Salam",
+    "short_name": "Salam",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#2E7D32",
+    "theme_color": "#4CAF50",
+    "description": "Islamic Quran mobile application",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "quaran_mobile_7th_weak" "\0"
+            VALUE "CompanyName", "com.mikawi" "\0"
+            VALUE "FileDescription", "Salam" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "quaran_mobile_7th_weak" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "quaran_mobile_7th_weak.exe" "\0"
-            VALUE "ProductName", "quaran_mobile_7th_weak" "\0"
+            VALUE "InternalName", "Salam" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 com.mikawi. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Salam.exe" "\0"
+            VALUE "ProductName", "Salam" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

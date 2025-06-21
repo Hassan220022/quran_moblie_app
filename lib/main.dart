@@ -7,6 +7,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/utils/dependency_injection.dart';
 import 'core/utils/app_theme.dart';
 import 'core/utils/route_observer.dart';
@@ -15,6 +16,7 @@ import 'data/models/bookmark.dart';
 import 'presentation/providers/preference_settings_provider.dart';
 import 'presentation/providers/reading_progress_provider.dart';
 import 'presentation/providers/enhanced_theme_provider.dart';
+import 'presentation/providers/chat_history_provider.dart';
 import 'presentation/screens/main_screen.dart';
 import 'presentation/screens/onboarding_screen.dart';
 import 'presentation/providers/cache_provider.dart';
@@ -24,6 +26,9 @@ import 'services/accessibility_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
 
   // Initialize Hive for local storage
   await Hive.initFlutter();
@@ -51,6 +56,7 @@ void main() async {
         ChangeNotifierProvider.value(value: DependencyInjection.surahProvider),
         ChangeNotifierProvider(create: (_) => ReadingProgressProvider()),
         ChangeNotifierProvider(create: (_) => EnhancedThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ChatHistoryProvider()),
       ],
       child: const MyApp(),
     ),

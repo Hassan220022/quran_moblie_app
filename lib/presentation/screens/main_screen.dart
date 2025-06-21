@@ -6,6 +6,7 @@ import 'bookmark.dart';
 import 'surah_list.dart';
 import 'prayer.dart';
 import 'settings_screen.dart';
+import 'islamic_ai_assistant_screen.dart';
 import '../../core/utils/route_observer.dart';
 
 class MainScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     const SurahListScreen(),
     const BookmarkScreen(),
     const PrayerTimesWidget(),
+    const IslamicAIAssistantScreen(),
     const SettingsScreen(),
   ];
 
@@ -30,6 +32,7 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
     'Holy Quran',
     'Bookmarks',
     'Prayers',
+    'AI Assistant',
     'Settings',
   ];
 
@@ -134,6 +137,10 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.access_time_rounded),
                   label: 'Prayers',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.auto_awesome_rounded),
+                  label: 'Assistant',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.settings_rounded),
